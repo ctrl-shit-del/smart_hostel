@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
   // Security
   device_mac: { type: String, trim: true },
   face_embeddings: [{ type: Number }],
+  dhobi_offence: { type: Number, default: 0 },
 
   // Staff-specific
   staff_role: { type: String },

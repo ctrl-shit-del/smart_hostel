@@ -4,6 +4,7 @@ const { LAUNDRY_STATUS } = require('../../../shared/constants');
 const laundrySessionSchema = new mongoose.Schema({
   session_id: { type: String, required: true, unique: true },
   student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  register_number: { type: String, required: true },
   room_no: { type: Number, required: true },
   block_name: { type: String },
   floor_no: { type: Number },

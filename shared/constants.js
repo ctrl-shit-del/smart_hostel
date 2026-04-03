@@ -145,6 +145,7 @@ const SOCKET_EVENTS = {
   // Laundry
   LAUNDRY_ACCEPTED: 'laundry:accepted',
   LAUNDRY_READY: 'laundry:ready',
+  LAUNDRY_OUT_OF_SCHEDULE: 'laundry:out_of_schedule',
 };
 
 const LAUNDRY_STATUS = {
