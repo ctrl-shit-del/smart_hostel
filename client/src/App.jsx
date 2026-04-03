@@ -1,0 +1,112 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from './store/authStore';
+import { useSocket } from './hooks/useSocket';
+
+// Pages
+import LoginPage from './pages/LoginPage';
+import AppShell from './layout/AppShell';
+import StudentDashboard from './pages/student/Dashboard';
+import StudentProfile from './pages/student/Profile';
+import RaiseComplaint from './pages/student/RaiseComplaint';
+import MyComplaints from './pages/student/MyComplaints';
+import ApplyGatepass from './pages/student/ApplyGatepass';
+import MyGatepass from './pages/student/MyGatepass';
+import MyAttendance from './pages/student/Attendance';
+import MessInfo from './pages/student/Mess';
+import LaundrySchedule from './pages/student/Laundry';
+import GuestRequest from './pages/student/GuestRequest';
+
+import AdminDashboard from './pages/admin/Dashboard';
+import RoomAllocation from './pages/admin/RoomAllocation';
+import ComplaintDashboard from './pages/admin/ComplaintDashboard';
+import AttendanceView from './pages/admin/AttendanceView';
+import GatepassManagement from './pages/admin/GatepassManagement';
+import HealthEvents from './pages/admin/HealthEvents';
+import StaffDirectory from './pages/admin/StaffDirectory';
+import Announcements from './pages/admin/Announcements';
+import MessManagement from './pages/admin/MessManagement';
+
+import GuardScanner from './pages/guard/GuardScanner';
+
+import './index.css';
+
+// Socket connection (once, at root)
+function SocketInit() {
+  useSocket();
+  return null;
+}
+
+function ProtectedRoute({ children, allowedRoles }) {
+  const { isAuthenticated, user } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user?.role)) return <Navigate to="/" replace />;
+  return children;
+}
+
+function RoleRouter() {
+  const { user } = useAuthStore();
+  const role = user?.role;
+  if (role === 'hostel_admin' || role === 'warden' || role === 'floor_admin' || role === 'mess_incharge') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  if (role === 'guard') return <Navigate to="/guard/scan" replace />;
+  return <Navigate to="/student/dashboard" replace />;
+}
+
+export default function App() {
+  const { isAuthenticated } = useAuthStore();
+
+  return (
+    <BrowserRouter>
+      {isAuthenticated && <SocketInit />}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { background: '#16161f', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.07)' },
+          success: { iconTheme: { primary: '#10b981', secondary: '#16161f' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#16161f' } },
+        }}
+      />
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/" element={<ProtectedRoute><RoleRouter /></ProtectedRoute>} />
+
+        {/* Student Routes */}
+        <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><AppShell role="student" /></ProtectedRoute>}>
+          <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="profile" element={<StudentProfile />} />
+          <Route path="complaint/new" element={<RaiseComplaint />} />
+          <Route path="complaints" element={<MyComplaints />} />
+          <Route path="gatepass/apply" element={<ApplyGatepass />} />
+          <Route path="gatepass" element={<MyGatepass />} />
+          <Route path="attendance" element={<MyAttendance />} />
+          <Route path="mess" element={<MessInfo />} />
+          <Route path="laundry" element={<LaundrySchedule />} />
+          <Route path="guest" element={<GuestRequest />} />
+        </Route>
+
+        {/* Admin/Warden/Staff Routes */}
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'housekeeping', 'technician']}><AppShell role="admin" /></ProtectedRoute>}>
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="rooms" element={<RoomAllocation />} />
+          <Route path="complaints" element={<ComplaintDashboard />} />
+          <Route path="attendance" element={<AttendanceView />} />
+          <Route path="gatepass" element={<GatepassManagement />} />
+          <Route path="health" element={<HealthEvents />} />
+          <Route path="staff" element={<StaffDirectory />} />
+          <Route path="announcements" element={<Announcements />} />
+          <Route path="mess" element={<MessManagement />} />
+        </Route>
+
+        {/* Guard Routes */}
+        <Route path="/guard" element={<ProtectedRoute allowedRoles={['guard']}><AppShell role="guard" /></ProtectedRoute>}>
+          <Route path="scan" element={<GuardScanner />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
