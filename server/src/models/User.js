@@ -5,37 +5,36 @@ const { ROLES } = require('../../../shared/constants');
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   register_number: { type: String, unique: true, sparse: true, trim: true, uppercase: true },
-  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
-  password: { type: String, required: true, minlength: 6 },
+  email: { type: String, sparse: true, lowercase: true, trim: true },
+  password: { type: String, required: true },
 
   role: {
     type: String,
     enum: Object.values(ROLES),
     default: ROLES.STUDENT,
-    required: true,
   },
 
   // Hostel placement
   block_name: { type: String, trim: true },
-  floor_no: { type: Number, min: 1, max: 15 },
+  floor: { type: String }, // DB uses "Floor 1"
   room_no: { type: Number },
-  bed_id: { type: String, enum: ['A', 'B', 'C', 'D', 'E', 'F'] },
+  bed_type: { type: String },
+  bed: { type: String }, 
 
   // Profile
   phone: { type: String, trim: true },
-  gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+  gender: { type: String },
   department: { type: String, trim: true },
-  academic_year: { type: Number, min: 1, max: 5 },
-  profile_photo: { type: String }, // URL
-  mess_information: { type: String },
-  bed_type: { type: String },
+  academic_year: { type: Number },
+  profile_photo: { type: String },
+  mess: { type: String }, // DB uses "mess"
 
   // Parent / Emergency
   parent_name: { type: String },
   parent_phone: { type: String },
   parent_email: { type: String },
 
-  // Security / AI
+  // Security
   device_mac: { type: String, trim: true },
   face_embeddings: [{ type: Number }],
 
@@ -49,33 +48,62 @@ const userSchema = new mongoose.Schema({
   // Flags
   is_active: { type: Boolean, default: true },
   is_flagged: { type: Boolean, default: false },
-  flag_reason: { type: String },
 
   created_at: { type: Date, default: Date.now },
   last_login: { type: Date },
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  strict: false, // Let any other fields the user provided pass through
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// Hash password before save
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
+// Virtuals for compatibility with client
+userSchema.virtual('floor_no').get(function() {
+  if (typeof this.floor === 'string') {
+    return parseInt(this.floor.replace(/\D/g, '')) || this.floor;
+  }
+  return this.floor;
+});
+
+userSchema.virtual('bed_id').get(function() {
+  if (typeof this.bed === 'string') {
+    return this.bed.split(' ').pop(); // e.g. "Bed C" -> "C"
+  }
+  return this.bed;
+});
+
+userSchema.virtual('mess_information').get(function() {
+  return this.mess;
+});
+
+// Hash password before save (only if not already hashed and modified)
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
+    this.password = await bcrypt.hash(this.password, 12);
+  }
 });
 
 // Compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  if (!this.password) return false;
+  // Match plaintext first (since user database has plaintext passwords)
+  if (this.password === candidatePassword) return true;
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch(e) {
+    return false;
+  }
 };
 
 // Virtual: full hostel address
 userSchema.virtual('hostel_address').get(function () {
-  if (!this.block_name || !this.floor_no || !this.room_no) return null;
-  return `${this.block_name}, Floor ${this.floor_no}, Room ${this.room_no}, Bed ${this.bed_id}`;
+  if (!this.block_name || !this.floor || !this.room_no) return null;
+  return `${this.block_name}, Floor ${this.floor}, Room ${this.room_no}`;
 });
 
 // Indexes
-userSchema.index({ block_name: 1, floor_no: 1 });
 userSchema.index({ register_number: 1 });
-userSchema.index({ role: 1 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', userSchema, 'students');

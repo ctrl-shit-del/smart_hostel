@@ -5,12 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
-const DEMO_ACCOUNTS = [
-  { label: 'Student', register_number: '23BCE1001', password: 'Student@123', role: 'student', color: '#6366f1' },
-  { label: 'Warden', register_number: 'WARDEN01', password: 'Warden@123', role: 'warden', color: '#10b981' },
-  { label: 'Admin', register_number: 'ADMIN01', password: 'Admin@123', role: 'hostel_admin', color: '#f59e0b' },
-  { label: 'Guard', register_number: 'GUARD01', password: 'Guard@123', role: 'guard', color: '#06b6d4' },
-];
+// Using live database accounts only
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -42,9 +37,7 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (account) => {
-    setForm({ register_number: account.register_number, password: account.password });
-  };
+  // User will supply data from DB via form inputs
 
   return (
     <div style={{
@@ -157,27 +150,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo accounts */}
-          <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 10, textAlign: 'center' }}>
-              — Demo Accounts —
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.label}
-                  onClick={() => fillDemo(acc)}
-                  className="btn btn-secondary btn-sm"
-                  style={{ borderLeft: `3px solid ${acc.color}`, justifyContent: 'flex-start', textAlign: 'left' }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>{acc.label}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>{acc.register_number}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* No demo accounts, real credentials only */}
 
           <p style={{ marginTop: 24, textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             SmartHostel AI · PS-002 · Solve-A-Thon 2026

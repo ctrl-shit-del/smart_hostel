@@ -1,103 +1,75 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ClipboardCheck, QrCode, AlertTriangle, Loader2 } from 'lucide-react';
 import api from '../../lib/api';
-import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 export default function AttendanceView() {
-  const [records, setRecords] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [anomalies, setAnomalies] = useState([]);
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [floor, setFloor] = useState(1);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('overview');
 
-  useEffect(() => { fetchAll(); }, [date]);
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/attendance/floor/A Block/${floor}`)
+      .then(res => setData(res.records || []))
+      .catch(() => toast.error('Failed to load floor attendance'))
+      .finally(() => setLoading(false));
+  }, [floor]);
 
-  const fetchAll = async () => {
+  const generateQR = async () => {
     try {
-      const [rRes, aRes] = await Promise.allSettled([
-        api.get(`/attendance?date=${date}&limit=200`),
-        api.get('/attendance/anomalies'),
-      ]);
-      setRecords(rRes.value?.records || []);
-      setAnomalies(aRes.value?.anomalies || []);
-    } catch {}
-    setLoading(false);
+      await api.post('/attendance/qr/generate');
+      toast.success('QR Code sent to displays');
+    } catch { toast.error('QR Gen Failed'); }
   };
 
-  const present = records.filter((r) => r.status === 'Present').length;
-  const absent = records.filter((r) => r.status === 'Absent').length;
-  const rate = records.length ? Math.round((present / records.length) * 100) : 0;
+  const syncWifi = async () => {
+    try {
+      await api.post('/attendance/wifi/sync');
+      toast.success('WiFi logs synced');
+    } catch { toast.error('WiFi sync failed'); }
+  };
 
   return (
-    <div className="animate-fade-in">
-      <div className="page-header"><h1>Attendance View</h1><p>Floor-wise daily attendance with anomaly detection</p></div>
-
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <input type="date" className="input" style={{ width: 180 }} value={date} onChange={(e) => setDate(e.target.value)} />
-        <div className="stats-grid" style={{ flex: 1 }}>
-          <div className="glass-card stat-card" style={{ padding: 14 }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', background: '#10b981', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{present}</div>
-            <div className="stat-label">Present</div>
-          </div>
-          <div className="glass-card stat-card" style={{ padding: 14 }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', background: '#ef4444', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{absent}</div>
-            <div className="stat-label">Absent</div>
-          </div>
-          <div className="glass-card stat-card" style={{ padding: 14 }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem' }}>{rate}%</div>
-            <div className="stat-label">Attendance Rate</div>
-          </div>
-          <div className="glass-card stat-card" style={{ padding: 14 }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', background: '#f59e0b', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{anomalies.length}</div>
-            <div className="stat-label">Anomalies</div>
-          </div>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}><ClipboardCheck size={24} style={{verticalAlign:-4}}/> Floor Attendance</h1>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-secondary" onClick={generateQR}><QrCode size={16}/> Gen Daily QR</button>
+          <button className="btn btn-primary" onClick={syncWifi}>Simulate WiFi Sync</button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {['overview', 'anomalies'].map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`btn ${tab === t ? 'btn-primary' : 'btn-secondary'} btn-sm`}>{t === 'overview' ? 'Attendance Records' : `Anomalies (${anomalies.length})`}</button>
+      <div style={{ marginBottom: 20 }}>
+        Floor: {[1,2,3,4].map(f => (
+          <button key={f} className={`btn btn-sm ${floor === f ? 'btn-primary' : 'btn-secondary'}`} style={{ marginLeft: 8 }} onClick={() => setFloor(f)}>F{f}</button>
         ))}
       </div>
 
-      {tab === 'overview' && (
-        <div className="glass-card">
-          <div className="table-wrapper">
-            <table>
-              <thead><tr><th>Student</th><th>Floor</th><th>Room</th><th>Status</th><th>Method</th><th>Time</th></tr></thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center' }}>Loading...</td></tr>}
-                {!loading && records.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No records for {date}</td></tr>}
-                {records.map((r, i) => (
-                  <tr key={i}>
-                    <td><div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{r.student_name}</div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.register_number}</div></td>
-                    <td>Floor {r.floor_no}</td>
-                    <td>{r.room_no}</td>
-                    <td><span className={`badge ${r.status === 'Present' ? 'badge-success' : r.status === 'On Leave' ? 'badge-info' : 'badge-danger'}`}>{r.status}</span></td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{r.method || '—'}</td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.wifi_detected_at ? format(new Date(r.wifi_detected_at), 'h:mm a') : r.qr_scanned_at ? format(new Date(r.qr_scanned_at), 'h:mm a') : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === 'anomalies' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {anomalies.length === 0 && <div className="glass-card" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>No anomalies detected 🎉</div>}
-          {anomalies.map((a, i) => (
-            <div key={i} className="glass-card" style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '3px solid #ef4444' }}>
-              <div>
-                <div style={{ fontWeight: 700 }}>{a.student_name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{a.register_number} · Room {a.room_no} · Floor {a.floor_no}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className="badge badge-danger">{a.consecutive_absences} consecutive nights absent</span>
-              </div>
-            </div>
-          ))}
+      {loading ? <Loader2 className="spin" /> : (
+        <div className="card">
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <th style={{ padding: 12 }}>Room</th>
+                <th style={{ padding: 12 }}>Student</th>
+                <th style={{ padding: 12 }}>Status</th>
+                <th style={{ padding: 12 }}>Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((r, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: 12 }}>{r.room_no}</td>
+                  <td style={{ padding: 12 }}>{r.student_name} ({r.register_number})</td>
+                  <td style={{ padding: 12 }}>
+                    <span className="badge" style={{ color: r.status === 'Present' ? '#10b981' : '#ef4444' }}>{r.status}</span>
+                  </td>
+                  <td style={{ padding: 12, color: 'var(--text-muted)' }}>{r.method}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

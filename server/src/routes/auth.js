@@ -33,23 +33,15 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   const token = generateToken(user);
 
+  const userObj = user.toJSON({ virtuals: true });
+  delete userObj.password;
+  delete userObj.face_embeddings;
+
   res.json({
     success: true,
     message: 'Login successful',
     token,
-    user: {
-      _id: user._id,
-      name: user.name,
-      register_number: user.register_number,
-      email: user.email,
-      role: user.role,
-      block_name: user.block_name,
-      floor_no: user.floor_no,
-      room_no: user.room_no,
-      bed_id: user.bed_id,
-      profile_photo: user.profile_photo,
-      gender: user.gender,
-    },
+    user: userObj,
   });
 }));
 

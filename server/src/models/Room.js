@@ -63,4 +63,4 @@ roomSchema.pre('save', function (next) {
 roomSchema.index({ block_name: 1, floor_no: 1, room_number: 1 }, { unique: true });
 roomSchema.index({ block_name: 1, occupancy_status: 1 });
 
-module.exports = mongoose.model('Room', roomSchema);
+module.exports = mongoose.model('Room', roomSchema, 'mongoose_rooms');
