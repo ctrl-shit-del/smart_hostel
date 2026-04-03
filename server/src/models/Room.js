@@ -40,6 +40,9 @@ const roomSchema = new mongoose.Schema({
   // History
   swap_history: [swapHistorySchema],
 
+  // Utility schedule
+  laundry_day: { type: String, enum: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] },
+
   is_active: { type: Boolean, default: true },
 }, { timestamps: true });
 

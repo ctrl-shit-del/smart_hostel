@@ -43,7 +43,11 @@ const guardNav = [
   { to: '/guard/scan', icon: QrCode, label: 'Gate Scanner' },
 ];
 
-const navByRole = { student: studentNav, admin: adminNav, guard: guardNav };
+const dhobiNav = [
+  { to: '/dhobi/scan', icon: WashingMachine, label: 'Laundry Scanner' },
+];
+
+const navByRole = { student: studentNav, admin: adminNav, guard: guardNav, dhobi: dhobiNav };
 
 export default function AppShell({ role }) {
   const { user, logout } = useAuthStore();

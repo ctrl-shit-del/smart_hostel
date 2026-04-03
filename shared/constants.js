@@ -142,6 +142,15 @@ const SOCKET_EVENTS = {
   GUEST_OVERSTAY: 'guest:overstay',
   // Security
   INTRUDER_ALERT: 'security:intruder',
+  // Laundry
+  LAUNDRY_ACCEPTED: 'laundry:accepted',
+  LAUNDRY_READY: 'laundry:ready',
+};
+
+const LAUNDRY_STATUS = {
+  PROCESSING: 'Processing',
+  READY: 'Ready',
+  PICKED_UP: 'PickedUp',
 };
 
 module.exports = {
@@ -161,4 +170,5 @@ module.exports = {
   BLOCKS,
   HTTP_STATUS,
   SOCKET_EVENTS,
+  LAUNDRY_STATUS,
 };

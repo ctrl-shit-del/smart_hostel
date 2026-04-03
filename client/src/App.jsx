@@ -29,6 +29,7 @@ import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 
 import GuardScanner from './pages/guard/GuardScanner';
+import DhobiScanner from './pages/dhobi/DhobiScanner';
 
 import './index.css';
 
@@ -52,6 +53,7 @@ function RoleRouter() {
     return <Navigate to="/admin/dashboard" replace />;
   }
   if (role === 'guard') return <Navigate to="/guard/scan" replace />;
+  if (role === 'housekeeping') return <Navigate to="/dhobi/scan" replace />;
   return <Navigate to="/student/dashboard" replace />;
 }
 
@@ -103,6 +105,11 @@ export default function App() {
         {/* Guard Routes */}
         <Route path="/guard" element={<ProtectedRoute allowedRoles={['guard']}><AppShell role="guard" /></ProtectedRoute>}>
           <Route path="scan" element={<GuardScanner />} />
+        </Route>
+
+        {/* Dhobi / Housekeeping Routes */}
+        <Route path="/dhobi" element={<ProtectedRoute allowedRoles={['housekeeping', 'hostel_admin']}><AppShell role="dhobi" /></ProtectedRoute>}>
+          <Route path="scan" element={<DhobiScanner />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
