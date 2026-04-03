@@ -76,12 +76,14 @@ export const useSocket = () => {
 };
 
 export const useSocketEvent = (event, callback) => {
-  useEffect(() => {
-    if (!socket) return undefined;
+  const socket = useSocket();
 
+  useEffect(() => {
+    if (!socket) return;
+    
     socket.on(event, callback);
     return () => {
-      socket?.off(event, callback);
+      socket.off(event, callback);
     };
-  }, [event, callback]);
+  }, [socket, event, callback]);
 };

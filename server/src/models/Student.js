@@ -37,10 +37,6 @@ const studentSchema = new mongoose.Schema({
   community_strikes: { type: Number, default: 0, min: 0, max: 3 },
   community_banned: { type: Boolean, default: false },
 
-  // Community moderation
-  community_strikes: { type: Number, default: 0, min: 0, max: 3 },
-  community_banned: { type: Boolean, default: false },
-
   // Flags
   is_active: { type: Boolean, default: true },
   is_flagged: { type: Boolean, default: false },
