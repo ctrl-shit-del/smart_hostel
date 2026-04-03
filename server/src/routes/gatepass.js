@@ -31,7 +31,7 @@ cron.schedule('*/15 * * * *', async () => {
 
 // POST /api/v1/gatepass/apply
 router.post('/apply', authenticate, asyncHandler(async (req, res) => {
-  const { type, destination, reason, expected_exit, expected_return, guardian_name, guardian_phone, guardian_relation } = req.body;
+  const { type, destination, reason, expected_exit, expected_return, guardian_name, guardian_phone, guardian_relation, register_number } = req.body;
 
   // Validate outing time rules
   if (type === GATEPASS_TYPES.OUTING) {
@@ -47,13 +47,23 @@ router.post('/apply', authenticate, asyncHandler(async (req, res) => {
     }
   }
 
+  // Handle manual input/chatbot register_number override
+  let studentUser = req.user;
+  if (register_number && register_number !== req.user.register_number) {
+    // If an admin or chatbot provides a register_number, verify it exists
+    const User = require('../models/User');
+    const override = await User.findOne({ register_number: register_number.toUpperCase() });
+    if (!override) return res.status(404).json({ success: false, message: 'Student register number not found' });
+    studentUser = override;
+  }
+
   const gatepass = await Gatepass.create({
-    student_id: req.user._id,
-    student_name: req.user.name,
-    register_number: req.user.register_number,
-    block_name: req.user.block_name,
-    floor_no: req.user.floor_no,
-    room_no: req.user.room_no,
+    student_id: studentUser._id,
+    student_name: studentUser.name,
+    register_number: studentUser.register_number,
+    block_name: studentUser.block_name || studentUser.block,
+    floor_no: studentUser.floor_no || studentUser.floor,
+    room_no: studentUser.room_no,
     type, destination, reason, expected_exit, expected_return,
     guardian_name, guardian_phone, guardian_relation,
   });

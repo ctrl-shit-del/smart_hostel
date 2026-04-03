@@ -53,7 +53,7 @@ const complaintSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Set SLA deadline on create
-complaintSchema.pre('save', function (next) {
+complaintSchema.pre('save', function () {
   if (this.isNew) {
     const hours = SLA_HOURS[this.severity] || 24;
     this.sla_deadline = new Date(Date.now() + hours * 60 * 60 * 1000);
@@ -62,7 +62,6 @@ complaintSchema.pre('save', function (next) {
     this.resolved_at = new Date();
     this.resolution_time_hrs = (this.resolved_at - this.raised_at) / 3_600_000;
   }
-  next();
 });
 
 // Indexes

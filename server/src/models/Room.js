@@ -44,7 +44,7 @@ const roomSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-compute occupancy status before save
-roomSchema.pre('save', function (next) {
+roomSchema.pre('save', function () {
   const occupied = this.beds.filter((b) => b.is_occupied).length;
   const total = this.total_beds;
   if (this.maintenance_flag) {
@@ -56,7 +56,6 @@ roomSchema.pre('save', function (next) {
   } else {
     this.occupancy_status = ROOM_OCCUPANCY_STATUS.PARTIAL;
   }
-  next();
 });
 
 // Indexes
