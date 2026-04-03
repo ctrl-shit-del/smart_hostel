@@ -7,6 +7,8 @@ import {
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
   UserCog, QrCode
 } from 'lucide-react';
+import ChatBot from '../components/ChatBot/ChatBot.jsx';
+
 
 const studentNav = [
   { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -181,6 +183,9 @@ export default function AppShell({ role }) {
         {/* Page content */}
         <Outlet />
       </div>
+
+      {/* AI Chatbot — student only */}
+      {role === 'student' && <ChatBot />}
     </div>
   );
 }
