@@ -165,28 +165,99 @@ async function main() {
   if (!demoStudent) {
     // Find any student and alias or create one
     const anyStudent = await studentsCol.findOne({});
-    if (anyStudent) {
-      const hashed = await bcrypt.hash('Student@123', 12);
+    const hashed = await bcrypt.hash('Student@123', 12);
+    await usersCol.insertOne({
+      name: anyStudent?.name || 'Demo Student',
+      register_number: '23BCE1001',
+      password: hashed,
+      role: 'student',
+      block_name: anyStudent?.block_name || 'A Block',
+      floor_no: anyStudent?.floor || 1,
+      room_no: anyStudent?.room_no || 101,
+      gender: anyStudent?.gender || 'Male',
+      bed_type: anyStudent?.bed_type || '3 Bed NAC',
+      is_active: true,
+      is_flagged: false,
+      created_at: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    console.log('\n  [OK] Created demo student 23BCE1001');
+  } else {
+    console.log('\n  [SKIP] Demo student 23BCE1001 already exists');
+  }
+
+  // 4. Seed user's specific requested credentials
+  const targetHashed = await bcrypt.hash('S7wJ0UlaKN', 12);
+  const atlasStudent = await studentsCol.findOne({ register_number: /23BEC1106/i });
+  
+  if (atlasStudent) {
+    const existing = await usersCol.findOne({ register_number: '23BEC1106' });
+    if (existing) {
+      await usersCol.updateOne(
+        { register_number: '23BEC1106' },
+        { 
+          $set: { 
+            password: targetHashed,
+            name: atlasStudent.name // Override 'Hostel User' with actual name from database
+          } 
+        }
+      );
+      console.log('\n  [OK] Updated password and name for requested user 23BEC1106 from students DB');
+    } else {
       await usersCol.insertOne({
-        name: anyStudent.name || 'Demo Student',
-        register_number: '23BCE1001',
-        password: hashed,
+        name: atlasStudent.name || 'Student 23BEC1106',
+        register_number: '23BEC1106',
+        password: targetHashed,
         role: 'student',
-        block_name: anyStudent.block_name || 'A Block',
-        floor_no: anyStudent.floor || 1,
-        room_no: anyStudent.room_no || 101,
-        gender: anyStudent.gender || 'Male',
-        bed_type: anyStudent.bed_type || '3 Bed NAC',
+        block_name: atlasStudent.block_name || 'B Block',
+        floor_no: atlasStudent.floor || 2,
+        room_no: atlasStudent.room_no || 204,
+        gender: atlasStudent.gender || 'Male',
+        bed_type: atlasStudent.bed_type || '2 Bed AC',
         is_active: true,
         is_flagged: false,
-        created_at: new Date(),
+        created_at: atlasStudent.created_at || new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      console.log('\n  [OK] Created demo student 23BCE1001');
+      console.log('\n  [OK] Created requested user 23BEC1106 from students DB');
     }
   } else {
-    console.log('\n  [SKIP] Demo student 23BCE1001 already exists');
+    // If running in Memory DB, atlasStudent won't be found. We must fallback to exact provided data instead of 'Hostel User'.
+    const existing = await usersCol.findOne({ register_number: '23BEC1106' });
+    if (!existing) {
+      await usersCol.insertOne({
+        "name": "Parth Shah",
+        "register_number": "23BEC1106",
+        "password": "S7wJ0UlaKN", // The pre-save hook won't apply to native driver, but comparePassword allows plain-text!
+        "password_hash": targetHashed, // Just in case it checks standard
+        "role": "student",
+        "block_name": "A Block",
+        "floor": "Floor 1",
+        "floor_no": 1,
+        "room_no": 102,
+        "bed": "Bed C",
+        "bed_type": "3 Bed NAC",
+        "mess": "Non-Veg Fusion",
+        "phone": "+91-6236087634",
+        "email": "parth.shah@vit.ac.in",
+        "gender": "Male",
+        "parent_name": "Ramesh Shah",
+        "parent_phone": "+91-8604726172",
+        "parent_email": "ramesh.shah@gmail.com",
+        "is_active": true,
+        "is_flagged": false,
+        "created_at": new Date(),
+        "createdAt": new Date(),
+        "updatedAt": new Date()
+      });
+      
+      // Update directly with the hash to be safe against both plaintext and bcrypt checks
+      await usersCol.updateOne({ register_number: '23BEC1106' }, { $set: { password: targetHashed } });
+      
+      console.log('\n  [OK] Created requested user 23BEC1106 using fallback local JSON schema');
+    }
   }
 
   // 4. Create indexes

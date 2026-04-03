@@ -18,9 +18,13 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('sh_token');
-      localStorage.removeItem('sh_user');
-      window.location.href = '/login';
+      // Don't intercept and redirect if we are already trying to log in
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      if (!isLoginRequest && window.location.pathname !== '/login') {
+        localStorage.removeItem('sh_token');
+        localStorage.removeItem('sh_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error.response?.data || error);
   }

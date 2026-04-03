@@ -111,4 +111,4 @@ userSchema.virtual('hostel_address').get(function () {
 // Indexes
 userSchema.index({ register_number: 1 });
 
-module.exports = mongoose.model('User', userSchema, 'students');
+module.exports = mongoose.model('User', userSchema, 'users');
