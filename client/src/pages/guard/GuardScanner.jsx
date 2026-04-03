@@ -1,110 +1,91 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { QrCode, LogOut, LogIn, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useEffect } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { QrCode, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 export default function GuardScanner() {
-  const [scanResult, setScanResult] = useState(null);
-  const [manualToken, setManualToken] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [scanType, setScanType] = useState('exit');
-  const scannerRef = useRef(null);
+  const [mode, setMode] = useState('exit'); // 'exit' or 'entry'
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState(null); // { success, data, message }
 
   useEffect(() => {
-    const scanner = new Html5QrcodeScanner('reader', { qrbox: { width: 250, height: 250 }, fps: 10 }, false);
-    scanner.render(
-      (decoded) => { handleScan(decoded); },
-      (err) => {}
-    );
-    scannerRef.current = scanner;
-    return () => { scanner.clear().catch(() => {}); };
-  }, [scanType]);
+    if (scanning) {
+      const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scanner.render(onScanSuccess, onScanFailure);
+
+      function onScanSuccess(decodedText) {
+        scanner.clear();
+        setScanning(false);
+        handleScan(decodedText);
+      }
+      function onScanFailure() { /* ignore continuous failures */ }
+
+      return () => scanner.clear().catch(e => console.error(e));
+    }
+  }, [scanning, mode]);
 
   const handleScan = async (token) => {
-    if (loading) return;
-    setLoading(true);
     try {
-      const endpoint = scanType === 'exit' ? '/gatepass/scan/exit' : '/gatepass/scan/entry';
-      const res = await api.post(endpoint, { qr_token: token });
-      setScanResult({ ...res, token });
-      if (res.status === 'GREEN') toast.success('✅ Valid — Entry allowed');
-      else if (res.status === 'YELLOW') toast('⚠️ Pass expiring soon', { icon: '⚠️' });
-      else toast.error('🚫 Access denied or expired');
+      const endpoint = mode === 'exit' ? '/gatepass/scan/exit' : '/gatepass/scan/entry';
+      const res = await api.post(endpoint, { token });
+      setResult({ success: true, data: res.gatepass, message: res.message });
+      toast.success(res.message);
     } catch (err) {
-      setScanResult({ status: 'RED', message: err.message || 'Scan failed' });
-      toast.error('Scan failed: ' + (err.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
+      setResult({ success: false, message: err.message || 'Invalid QR' });
+      // We play an error sound or show big red UI
     }
   };
 
-  const handleManual = (e) => {
-    e.preventDefault();
-    if (!manualToken) return;
-    handleScan(manualToken);
-    setManualToken('');
-  };
-
-  const statusStyles = {
-    GREEN: { bg: 'rgba(16,185,129,0.1)', border: '#10b981', icon: <CheckCircle size={48} color="#10b981" />, label: 'ACCESS GRANTED' },
-    YELLOW: { bg: 'rgba(245,158,11,0.1)', border: '#f59e0b', icon: <AlertCircle size={48} color="#f59e0b" />, label: 'EXPIRING SOON' },
-    RED: { bg: 'rgba(239,68,68,0.1)', border: '#ef4444', icon: <XCircle size={48} color="#ef4444" />, label: 'ACCESS DENIED' },
-  };
-
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
-      <div className="page-header">
-        <h1>Gate Scanner</h1>
-        <p>Scan student QR passes at entry/exit · Guard Interface</p>
+    <div style={{ maxWidth: 500, margin: '0 auto', textAlign: 'center' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 20 }}><QrCode size={24} style={{verticalAlign: -4}}/> Guard Scanner</h1>
+
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <button className={`btn ${mode === 'exit' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1 }} onClick={() => { setMode('exit'); setResult(null); }}>
+          <LogOut size={18}/> SCAN EXIT
+        </button>
+        <button className={`btn ${mode === 'entry' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1 }} onClick={() => { setMode('entry'); setResult(null); }}>
+          <LogIn size={18}/> SCAN ENTRY
+        </button>
       </div>
 
-      {/* Scan type toggle */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {['exit', 'entry'].map((t) => (
-          <button key={t} onClick={() => { setScanType(t); setScanResult(null); }}
-            className={`btn ${scanType === t ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1, fontSize: '1rem', padding: '12px' }}>
-            {t === 'exit' ? '🚶‍♂️ Exit Scan' : '🔙 Return Scan'}
-          </button>
-        ))}
+      {/* Scanner Box */}
+      <div className="card" style={{ padding: 20, minHeight: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {!scanning && !result && (
+          <button className="btn btn-primary btn-lg" onClick={() => setScanning(true)}>Start Camera</button>
+        )}
+
+        {scanning && <div id="reader" style={{ width: '100%', maxWidth: 400 }} />}
+
+        {result && (
+          <div style={{ padding: 20, width: '100%' }}>
+            {result.success ? (
+              <div style={{ color: '#10b981' }}>
+                <CheckCircle2 size={64} style={{ margin: '0 auto 12px' }} />
+                <h2 style={{ fontWeight: 800 }}>SUCCESS ({mode.toUpperCase()})</h2>
+                <div style={{ marginTop: 12, padding: 12, background: 'var(--bg-elevated)', borderRadius: 8, color: 'var(--text-primary)', textAlign: 'left' }}>
+                  <b>Student:</b> {result.data.student_name} ({result.data.register_number})<br/>
+                  <b>Room:</b> {result.data.room_no}<br/>
+                  <b>Destination:</b> {result.data.destination}<br/>
+                  <b>Return Due:</b> {new Date(result.data.expected_return).toLocaleString()}<br/>
+                  <div style={{ marginTop: 8, color: 'var(--text-muted)' }}>{result.message}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: '#ef4444' }}>
+                <XCircle size={64} style={{ margin: '0 auto 12px' }} />
+                <h2 style={{ fontWeight: 800 }}>INVALID QR</h2>
+                <div style={{ marginTop: 12, padding: 12, background: '#ef444420', borderRadius: 8 }}>
+                  {result.message}
+                </div>
+              </div>
+            )}
+            <button className="btn btn-secondary" style={{ marginTop: 20 }} onClick={() => setResult(null)}>Scan Next</button>
+          </div>
+        )}
       </div>
-
-      {/* Scan result display */}
-      {scanResult && (
-        <div style={{ padding: 28, borderRadius: 'var(--radius-lg)', background: statusStyles[scanResult.status]?.bg || 'var(--bg-card)', border: `2px solid ${statusStyles[scanResult.status]?.border || '#666'}`, marginBottom: 20, textAlign: 'center' }}>
-          {statusStyles[scanResult.status]?.icon}
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: 12, color: statusStyles[scanResult.status]?.border }}>
-            {statusStyles[scanResult.status]?.label || 'UNKNOWN'}
-          </div>
-          {scanResult.gatepass && (
-            <div style={{ marginTop: 16, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              <div style={{ fontWeight: 700, fontSize: '1rem' }}>{scanResult.gatepass.student_name}</div>
-              <div>{scanResult.gatepass.register_number}</div>
-              <div>Destination: {scanResult.gatepass.destination}</div>
-              <div>Expected return: {scanResult.gatepass.expected_return ? new Date(scanResult.gatepass.expected_return).toLocaleString('en-IN') : '—'}</div>
-            </div>
-          )}
-          {scanResult.message && <div style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scanResult.message}</div>}
-          <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => setScanResult(null)}>Scan Next</button>
-        </div>
-      )}
-
-      {/* QR scanner */}
-      {!scanResult && (
-        <div className="glass-card" style={{ padding: 20, marginBottom: 20, overflow: 'hidden' }}>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <QrCode size={14} /> Point camera at student's QR code
-          </div>
-          <div id="reader" style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden' }} />
-        </div>
-      )}
-
-      {/* Manual token input */}
-      <form onSubmit={handleManual} className="glass-card" style={{ padding: 16, display: 'flex', gap: 10 }}>
-        <input className="input" placeholder="Or paste QR token manually..." value={manualToken} onChange={(e) => setManualToken(e.target.value)} style={{ flex: 1 }} />
-        <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? '...' : 'Scan'}</button>
-      </form>
     </div>
   );
 }

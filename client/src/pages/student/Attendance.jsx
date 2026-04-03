@@ -1,46 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ClipboardCheck, Calendar, Activity, Loader2 } from 'lucide-react';
 import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function MyAttendance() {
-  const [records, setRecords] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/attendance/student/me').then((res) => { setRecords(res.records || []); setLoading(false); }).catch(() => setLoading(false));
+    api.get('/attendance').then(res => {
+      setHistory(res.attendance || []);
+      setStats(res.summary || {});
+    }).catch(err => toast.error('Failed to load attendance'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const present = records.filter((r) => r.status === 'Present').length;
-  const rate = records.length ? Math.round((present / records.length) * 100) : 0;
-
   return (
-    <div className="animate-fade-in">
-      <div className="page-header"><h1>My Attendance</h1><p>Last 30 nights attendance history</p></div>
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
-        {[{ label: 'Present', val: present, color: '#10b981' }, { label: 'Absent', val: records.length - present, color: '#ef4444' }, { label: 'Attendance Rate', val: `${rate}%`, color: rate >= 75 ? '#10b981' : '#ef4444' }].map((s) => (
-          <div key={s.label} className="glass-card stat-card" key={s.label}>
-            <div className="stat-value" style={{ background: s.color, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.val}</div>
-            <div className="stat-label">{s.label}</div>
+    <div>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 20 }}><ClipboardCheck size={24} style={{verticalAlign:-4}}/> My Attendance</h1>
+      {loading ? <Loader2 className="spin" /> : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="card" style={{ padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Percentage</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: stats.percentage > 75 ? '#10b981' : '#ef4444' }}>{Math.round(stats.percentage)}%</div>
+            </div>
+            <div className="card" style={{ padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Days Present</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.presentCount}</div>
+            </div>
+            <div className="card" style={{ padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Leave/Absence</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.absentCount + stats.leaveCount}</div>
+            </div>
           </div>
-        ))}
-      </div>
-      {loading ? <div className="skeleton" style={{ height: 300 }} /> : (
-        <div className="glass-card">
-          <div className="table-wrapper">
-            <table>
-              <thead><tr><th>Date</th><th>Status</th><th>Method</th></tr></thead>
-              <tbody>
-                {records.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No records</td></tr>}
-                {records.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.date}</td>
-                    <td><span className={`badge ${r.status === 'Present' ? 'badge-success' : r.status === 'On Leave' ? 'badge-info' : 'badge-danger'}`}>{r.status}</span></td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'capitalize' }}>{r.method || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          <div className="card" style={{ padding: 20 }}>
+            <h3 style={{ fontWeight: 700, marginBottom: 12 }}>Last 30 Days Record</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {history.slice(0, 30).map(att => (
+                <div key={att._id} style={{ display: 'flex', justifyContent: 'space-between', padding: 12, borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontWeight: 600 }}>{new Date(att.date).toLocaleDateString()}</span>
+                  <span className="badge" style={{
+                    background: att.status === 'Present' ? '#10b98130' : att.status === 'Absent' ? '#ef444430' : '#f59e0b30',
+                    color: att.status === 'Present' ? '#10b981' : att.status === 'Absent' ? '#ef4444' : '#f59e0b',
+                  }}>{att.status}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -37,7 +37,7 @@ export default function StudentProfile() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               {[
                 { label: 'Block', val: p?.block_name || '—' },
-                { label: 'Floor', val: p?.floor_no ? `Floor ${p.floor_no}` : '—' },
+                { label: 'Floor', val: p?.floor_no ? `Floor ${p.floor_no}` : (p?.floor ? `Floor ${p.floor}` : '—') },
                 { label: 'Room Number', val: p?.room_no || '—' },
                 { label: 'Bed', val: p?.bed_id ? `Bed ${p.bed_id}` : '—' },
                 { label: 'Bed Type', val: p?.bed_type || '—' },
