@@ -35,6 +35,17 @@ const WELCOME_MSG = {
   timestamp: new Date(),
 };
 
+function normalizeTimestamp(value) {
+  if (value instanceof Date) return value;
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  return new Date();
+}
+
 export default function ChatBot() {
   const { user } = useAuthStore();
   const [open, setOpen]         = useState(false);
@@ -60,6 +71,34 @@ export default function ChatBot() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const runRuleBasedFallback = useCallback((messageText, fallbackNotice) => {
+    const ctx = {
+      user,
+      message: messageText,
+      session: session || {},
+      pending,
+      api,
+      now: new Date(),
+    };
+
+    const response = routeMessage(messageText, ctx);
+
+    if (response.nextPending !== undefined) setPending(response.nextPending);
+    if (response.clearPending) setPending(null);
+
+    const text = fallbackNotice && typeof response.text === 'string'
+      ? `${fallbackNotice}\n\n${response.text}`
+      : response.text;
+
+    return {
+      id: Date.now() + 1,
+      from: 'bot',
+      timestamp: new Date(),
+      ...response,
+      text,
+    };
+  }, [user, session, pending]);
 
   const fetchContext = async () => {
     try {
@@ -88,42 +127,52 @@ export default function ChatBot() {
     setInput('');
     setLoading(true);
 
-    // Simulate short typing delay for UX
-    await new Promise((r) => setTimeout(r, 600));
-
     try {
-      const ctx = {
-        user,
+      if (pending) {
+        const botMsg = runRuleBasedFallback(text);
+        setMessages((prev) => [...prev, botMsg]);
+        return;
+      }
+
+      const history = messages
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({ from: m.from, text: m.text }));
+
+      // Send to Groq-powered backend route
+      const response = await api.post('/chatbot/chat', {
         message: text,
-        session: session || {},
-        pending,
-        api,
-        now: new Date(),
-      };
-
-      const response = routeMessage(text, ctx);
-
-      // Handle pending state updates
-      if (response.nextPending !== undefined) setPending(response.nextPending);
-      if (response.clearPending) setPending(null);
+        history,
+        context: session || {}
+      });
 
       const botMsg = {
         id: Date.now() + 1,
         from: 'bot',
-        timestamp: new Date(),
         ...response,
+        timestamp: normalizeTimestamp(response?.timestamp),
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      setMessages((prev) => [...prev, {
-        id: Date.now() + 1, from: 'bot', type: 'error',
-        text: 'Something went wrong. Please try again.',
-        timestamp: new Date(),
-      }]);
+      if (err?.fallbackMode === 'rule-based') {
+        const botMsg = runRuleBasedFallback(text, err.text);
+        setMessages((prev) => [...prev, botMsg]);
+      } else {
+        const errorText =
+          typeof err?.text === 'string' ? err.text :
+          typeof err?.message === 'string' ? err.message :
+          'AI service unavailable. Please check your connection or try again later.';
+
+        setPending(null);
+        setMessages((prev) => [...prev, {
+          id: Date.now() + 1, from: 'bot', type: 'error',
+          text: errorText,
+          timestamp: new Date(),
+        }]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [input, loading, user, session, pending]);
+  }, [input, loading, messages, pending, runRuleBasedFallback, session]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -219,9 +268,9 @@ export default function ChatBot() {
             </div>
           )}
 
-          <div className="chat-timestamp">
-            {msg.timestamp?.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-          </div>
+            <div className="chat-timestamp">
+              {normalizeTimestamp(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </div>
         </div>
       </div>
     );
