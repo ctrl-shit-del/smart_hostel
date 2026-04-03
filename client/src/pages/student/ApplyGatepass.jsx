@@ -27,6 +27,44 @@ export default function ApplyGatepass() {
       return;
     }
 
+    const exitDate = new Date(form.expected_exit);
+    const returnDate = new Date(form.expected_return);
+
+    if (returnDate <= exitDate) {
+      toast.error('Return time must be after exit time');
+      return;
+    }
+
+    if (form.type === 'Outing') {
+      const exitHour = exitDate.getHours();
+      const returnHour = returnDate.getHours();
+
+      if (exitHour < 8 || exitHour >= 18 || returnHour < 8 || returnHour > 18 || (returnHour === 18 && returnDate.getMinutes() > 0)) {
+        toast.error('Outings are only permitted between 8:00 AM and 6:00 PM.');
+        return;
+      }
+
+      if (exitDate.toDateString() !== returnDate.toDateString()) {
+        toast.error('Outings must happen on the same day. For overnight trips, apply for Leave.');
+        return;
+      }
+
+      const durationHrs = (returnDate - exitDate) / (1000 * 60 * 60);
+      const isWeekend = exitDate.getDay() === 0 || exitDate.getDay() === 6;
+      const maxAllowed = isWeekend ? 6 : 2;
+
+      if (durationHrs > maxAllowed) {
+        toast.error(`Outing duration limit exceeded! Allowed: ${maxAllowed} hours. You selected: ${durationHrs.toFixed(1)} hours.`);
+        return;
+      }
+    } else if (form.type === 'Leave') {
+      const durationHrs = (returnDate - exitDate) / (1000 * 60 * 60);
+      if (durationHrs < 24) {
+        toast.error('Leave must be at least 1 day long (24 hours). For shorter trips, apply for Outing.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await api.post('/gatepass/apply', form);

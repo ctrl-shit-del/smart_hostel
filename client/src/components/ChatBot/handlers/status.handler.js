@@ -65,14 +65,79 @@
 
 // ─── STUB — Replace with full implementation ──────────────────────────────────
 
-/**
- * @param {object} ctx
- * @returns {object} Response
- */
 export function statusHandler(ctx) {
-  // TODO: implement
+  const { session } = ctx;
+  const sections = [];
+
+  // 1. Complaints
+  const complaints = session.complaints || [];
+  const activeComplaints = complaints.filter(c => c.status !== 'Resolved' && c.status !== 'Closed');
+  const urgentComplaints = activeComplaints.filter(c => c.severity === 'Urgent' || c.severity === 'High');
+  
+  sections.push({
+    icon: '📋',
+    title: 'Complaints',
+    items: complaints.length === 0 
+      ? ['No recent complaints'] 
+      : complaints.slice(0, 2).map(c => `${c.title || c.category} — ${c.status}`),
+    alert: urgentComplaints.length > 0 ? `You have ${urgentComplaints.length} unresolved urgent complaint(s)!` : null
+  });
+
+  // 2. Leave / Gatepass
+  const gatepass = session.gatepass || [];
+  const activeGatepass = gatepass.find(g => ['Pending', 'Approved', 'Out'].includes(g.status));
+  const overdueGatepass = gatepass.find(g => g.is_overdue);
+
+  sections.push({
+    icon: '🚪',
+    title: 'Leave / Gatepass',
+    items: activeGatepass 
+      ? [`${activeGatepass.type} to ${activeGatepass.destination} — ${activeGatepass.status}`] 
+      : ['No active leave'],
+    alert: overdueGatepass ? '⚠️ You have an overdue gatepass. Return immediately!' : null
+  });
+
+  // 3. Attendance
+  const attendance = session.attendance || { present: 0, total: 30, rate: 0 };
+  const attRate = attendance.rate || 0;
+  
+  sections.push({
+    icon: '📅',
+    title: 'Attendance',
+    items: [`Present: ${attendance.present} / ${attendance.total} days (${attRate}%)`],
+    alert: attRate < 75 ? 'Attendance below 75% — warden may be notified' : null
+  });
+
+  // 4. Mess
+  const mess = session.mess || {};
+  sections.push({
+    icon: '🍽️',
+    title: 'Mess',
+    items: [`Caterer: ${mess.caterer || 'N/A'}`, `Currently: ${mess.crowd_level || 'Unknown'} crowd`],
+    alert: null
+  });
+
+  // 5. Laundry
+  const laundry = session.laundry || {};
+  let laundryAlert = null;
+  const todayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+  if (laundry.chota_dhobi?.day === todayStr || laundry.profab?.day === todayStr) {
+    laundryAlert = 'You have a laundry slot today!';
+  }
+
+  sections.push({
+    icon: '🧺',
+    title: 'Laundry',
+    items: [
+      `Chota Dhobi: ${(laundry.chota_dhobi && laundry.chota_dhobi.day) ? laundry.chota_dhobi.day + ' ' + laundry.chota_dhobi.time : 'N/A'}`, 
+      `Profab Pickup: ${(laundry.profab && laundry.profab.day) ? laundry.profab.day : 'N/A'}`
+    ],
+    alert: laundryAlert
+  });
+
   return {
-    type: 'text',
-    text: '📊 Status handler — not yet implemented.',
+    type: 'dashboard',
+    text: 'Here is your current status dashboard:',
+    sections
   };
 }

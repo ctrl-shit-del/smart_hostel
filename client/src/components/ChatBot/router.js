@@ -92,7 +92,7 @@ const INTENT_MAP = [
 
   // ── Laundry ──
   {
-    keywords: ['laundry', 'dhobi', 'wash', 'washing', 'clothes', 'profab',
+    keywords: ['laundry', 'laundary', 'dhobi', 'wash', 'washing', 'clothes', 'profab',
                'chota dhobi', 'pickup', 'clothes schedule'],
     handler: laundryHandler,
   },

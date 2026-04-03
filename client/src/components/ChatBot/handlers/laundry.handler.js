@@ -36,14 +36,69 @@
 
 // ─── STUB — Replace with full implementation ──────────────────────────────────
 
-/**
- * @param {object} ctx
- * @returns {object} Response
- */
 export function laundryHandler(ctx) {
-  // TODO: implement
+  const { session, user } = ctx;
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const currentDayIndex = new Date().getDay();
+
+  let laundry = session.laundry;
+
+  // Fallback generation logic
+  if (!laundry || !laundry.chota_dhobi || !laundry.profab) {
+    const roomNum = user.room_no || 101;
+    const dhobi_day_index = roomNum % 7;
+    const profab_day_index = (dhobi_day_index + 2) % 7;
+    laundry = {
+      chota_dhobi: {
+        day: DAYS[dhobi_day_index],
+        time: '9:00 AM'
+      },
+      profab: {
+        day: DAYS[profab_day_index],
+        pickup: '10:00 AM',
+        delivery: `${DAYS[(profab_day_index + 2) % 7]} 6:00 PM`
+      }
+    };
+  }
+
+  const getDaysAway = (targetDayStr) => {
+    const targetIndex = DAYS.indexOf(targetDayStr);
+    let diff = targetIndex - currentDayIndex;
+    if (diff < 0) {
+      diff += 7;
+    }
+    return diff;
+  };
+
+  const dhobiDaysAway = getDaysAway(laundry.chota_dhobi.day);
+  const profabDaysAway = getDaysAway(laundry.profab.day);
+
+  let dhobiAlert = null;
+  if (dhobiDaysAway === 0) dhobiAlert = '🕘 Your Chota Dhobi slot is TODAY at ' + laundry.chota_dhobi.time + '!';
+  else if (dhobiDaysAway === 1) dhobiAlert = '⏰ Laundry pickup is tomorrow. Prepare your clothes.';
+
+  let profabAlert = null;
+  if (profabDaysAway === 0) profabAlert = '🕘 Your Profab pickup is TODAY at ' + laundry.profab.pickup + '!';
+  else if (profabDaysAway === 1) profabAlert = '⏰ Profab pickup is tomorrow. Prepare your clothes.';
+
   return {
-    type: 'text',
-    text: '🧺 Laundry handler — not yet implemented.',
+    type: 'laundry',
+    text: 'Here is your laundry schedule:',
+    slots: [
+      { 
+        label: 'Chota Dhobi (Free)', 
+        day: laundry.chota_dhobi.day, 
+        time: laundry.chota_dhobi.time, 
+        daysAway: dhobiDaysAway,
+        alert: dhobiAlert 
+      },
+      { 
+        label: 'Profab Pickup (Paid)', 
+        day: laundry.profab.day, 
+        time: laundry.profab.pickup, 
+        daysAway: profabDaysAway,
+        alert: profabAlert 
+      }
+    ]
   };
 }
