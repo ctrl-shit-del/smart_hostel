@@ -12,14 +12,11 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    let user = await Student.findById(decoded.id).select('-password -face_embeddings');
-
-    if (!user) {
-      const staffMember = await Staff.findById(decoded.id).select('-password');
-      if (staffMember) {
-        staffMember.role = staffMember.sys_role || staffMember.role || 'housekeeping';
-        user = staffMember;
-      }
+    let user;
+    if (decoded.role === 'student') {
+      user = await Student.findById(decoded.id).select('-password -face_embeddings');
+    } else {
+      user = await Staff.findById(decoded.id).select('-password');
     }
 
     if (!user) {

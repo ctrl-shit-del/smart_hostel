@@ -60,7 +60,6 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
   } else if (loginCategory === 'proctor') {
-    const Staff = require('../models/Staff');
     user = await Staff.findOne({
       $or: [
         { username: new RegExp(`^${identifier}$`, 'i') },
@@ -97,13 +96,13 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
   } else {
-    const studentQuery = {
+    // Default fallback lookup
+    user = await Student.findOne({
       $or: [
         { register_number: identifier.toUpperCase() },
         { email: identifier.toLowerCase() }
       ]
-    };
-    user = await Student.findOne(studentQuery);
+    });
     if (!user) {
       user = await Staff.findOne({
         $or: [
@@ -127,6 +126,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   }
 
   const isMatch = await user.comparePassword(password);
+  
   if (!isMatch) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
