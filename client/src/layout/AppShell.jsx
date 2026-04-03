@@ -5,7 +5,11 @@ import {
   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
+<<<<<<< HEAD
   UserCog, QrCode, Hash, Activity, MoonStar
+=======
+  UserCog, QrCode, Hash, Activity
+>>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 import PortalCallCenter from '../components/calls/PortalCallCenter.jsx';
@@ -82,8 +86,11 @@ const adminNav = [
   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+<<<<<<< HEAD
   { divider: true, label: 'Services' },
   { to: '/admin/students', icon: Users, label: 'Students' },
+=======
+>>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
   { divider: true, label: 'Intelligence' },
   { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
 ];

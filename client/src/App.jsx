@@ -19,6 +19,10 @@ import NightMess from './pages/student/NightMess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
 import CommunityForum from './pages/student/Community';
+<<<<<<< HEAD
+=======
+import ChatbotWidget from './pages/student/ChatbotWidget';
+>>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
 
 import AdminDashboard from './pages/admin/Dashboard';
 import RoomAllocation from './pages/admin/RoomAllocation';
@@ -30,9 +34,12 @@ import StaffDirectory from './pages/admin/StaffDirectory';
 import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
+<<<<<<< HEAD
 import HostelInfo from './pages/admin/HostelInfo';
 import StudentsDesk from './pages/admin/StudentsDesk';
 import ProctorDashboard from './pages/proctor/Dashboard';
+=======
+>>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
@@ -114,6 +121,7 @@ export default function App() {
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="mess" element={<MessManagement />} />
+<<<<<<< HEAD
           <Route path="students" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentsDesk /></ProtectedRoute>} />
           <Route path="community" element={<CommunitySentiment />} />
         </Route>
@@ -121,6 +129,9 @@ export default function App() {
         <Route path="/proctor" element={<ProtectedRoute allowedRoles={['proctor', 'hostel_admin']}><AppShell role="proctor" /></ProtectedRoute>}>
           <Route path="dashboard" element={<ProctorDashboard />} />
           <Route path="gatepass" element={<GatepassManagement />} />
+=======
+          <Route path="community" element={<CommunitySentiment />} />
+>>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
         </Route>
 
         {/* Guard Routes */}
@@ -139,6 +150,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {isAuthenticated && <ChatbotWidget />}
     </BrowserRouter>
   );
 }
