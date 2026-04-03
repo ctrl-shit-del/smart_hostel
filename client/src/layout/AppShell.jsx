@@ -5,14 +5,11 @@ import {
   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
-<<<<<<< HEAD
-  UserCog, QrCode, Hash, Activity, MoonStar
-=======
-  UserCog, QrCode, Hash, Activity
->>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
+  UserCog, QrCode, Hash, Activity, MoonStar, SunMedium
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 import PortalCallCenter from '../components/calls/PortalCallCenter.jsx';
+import { useThemeStore } from '../store/authStore';
 
 // ─── Role-based Theme ────────────────────────────────────────────────────────
 const ROLE_THEME = {
@@ -23,9 +20,9 @@ const ROLE_THEME = {
     badge: 'STUDENT',
   },
   admin: {
-    accent: '#8b5cf6',       // violet
-    gradient: 'linear-gradient(135deg, #5b21b6 0%, #8b5cf6 100%)',
-    glow: 'rgba(139,92,246,0.25)',
+    accent: '#2455A3',
+    gradient: 'linear-gradient(135deg, #163b75 0%, #2455A3 55%, #3497DB 100%)',
+    glow: 'rgba(36,85,163,0.25)',
     badge: 'STAFF',
   },
   proctor: {
@@ -78,6 +75,7 @@ const adminNav = [
   { divider: true, label: 'Core Modules' },
   { to: '/admin/hostel-info', icon: Building2, label: 'Hostel Info' },
   { to: '/admin/rooms', icon: Building2, label: 'Room Allocation' },
+  { to: '/admin/student-records', icon: Users, label: 'Student Records' },
   { to: '/admin/complaints', icon: MessageSquare, label: 'Complaints' },
   { to: '/admin/gatepass', icon: DoorOpen, label: 'Gatepass' },
   { to: '/admin/attendance', icon: ClipboardCheck, label: 'Attendance' },
@@ -86,11 +84,6 @@ const adminNav = [
   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-<<<<<<< HEAD
-  { divider: true, label: 'Services' },
-  { to: '/admin/students', icon: Users, label: 'Students' },
-=======
->>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
   { divider: true, label: 'Intelligence' },
   { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
 ];
@@ -117,15 +110,17 @@ const navByRole = { student: studentNav, admin: adminNav, proctor: proctorNav, g
 
 export default function AppShell({ role }) {
   const { user, logout } = useAuthStore();
+  const themeMode = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const alerts = useAlertStore((s) => s.alerts);
   const removeAlert = useAlertStore((s) => s.removeAlert);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  const canSeeStudents = ['warden', 'hostel_admin'].includes(user?.role);
+  const canSeeStudentRecords = ['warden', 'hostel_admin'].includes(user?.role);
   const navItems = role === 'admin'
-    ? adminNav.filter((item) => canSeeStudents || (item.to !== '/admin/students' && item.label !== 'Services'))
+    ? adminNav.filter((item) => canSeeStudentRecords || item.to !== '/admin/student-records')
     : navByRole[role] || studentNav;
   const unresolvedAlerts = alerts.length;
   const theme = ROLE_THEME[role] || ROLE_THEME.admin;
@@ -243,6 +238,10 @@ export default function AppShell({ role }) {
             }}>
               {theme.badge}
             </div>
+
+            <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {themeMode === 'dark' ? <SunMedium size={18} /> : <MoonStar size={18} />}
+            </button>
 
             {/* Alert bell */}
             <div style={{ position: 'relative' }}>

@@ -32,3 +32,16 @@ export const useAlertStore = create((set) => ({
   removeAlert: (id) => set((state) => ({ alerts: state.alerts.filter((a) => a.id !== id) })),
   clearAlerts: () => set({ alerts: [] }),
 }));
+
+export const useThemeStore = create((set) => ({
+  theme: localStorage.getItem('sh_theme') || 'dark',
+  setTheme: (theme) => {
+    localStorage.setItem('sh_theme', theme);
+    set({ theme });
+  },
+  toggleTheme: () => set((state) => {
+    const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('sh_theme', nextTheme);
+    return { theme: nextTheme };
+  }),
+}));

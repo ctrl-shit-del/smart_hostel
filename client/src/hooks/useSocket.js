@@ -14,8 +14,10 @@ export const useSocket = () => {
     if (!isAuthenticated || !token) return;
 
     socket = io('/', {
+      path: '/socket.io',
       auth: { token },
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
+      reconnection: true,
     });
 
     socket.on('connect', () => console.log('Socket connected'));

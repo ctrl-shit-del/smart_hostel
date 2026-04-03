@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore, useThemeStore } from './store/authStore';
 import { useSocket } from './hooks/useSocket';
 
 // Pages
@@ -19,10 +19,7 @@ import NightMess from './pages/student/NightMess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
 import CommunityForum from './pages/student/Community';
-<<<<<<< HEAD
-=======
 import ChatbotWidget from './pages/student/ChatbotWidget';
->>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
 
 import AdminDashboard from './pages/admin/Dashboard';
 import RoomAllocation from './pages/admin/RoomAllocation';
@@ -34,12 +31,9 @@ import StaffDirectory from './pages/admin/StaffDirectory';
 import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
-<<<<<<< HEAD
 import HostelInfo from './pages/admin/HostelInfo';
-import StudentsDesk from './pages/admin/StudentsDesk';
+import StudentRecords from './pages/admin/StudentRecords';
 import ProctorDashboard from './pages/proctor/Dashboard';
-=======
->>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
@@ -50,6 +44,16 @@ import './index.css';
 // Socket connection (once, at root)
 function SocketInit() {
   useSocket();
+  return null;
+}
+
+function ThemeInit() {
+  const theme = useThemeStore((state) => state.theme);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   return null;
 }
 
@@ -80,6 +84,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ThemeInit />
       {isAuthenticated && <SocketInit />}
       <Toaster
         position="top-right"
@@ -114,6 +119,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="hostel-info" element={<HostelInfo />} />
           <Route path="rooms" element={<RoomAllocation />} />
+          <Route path="student-records" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentRecords /></ProtectedRoute>} />
           <Route path="complaints" element={<ComplaintDashboard />} />
           <Route path="attendance" element={<AttendanceView />} />
           <Route path="gatepass" element={<GatepassManagement />} />
@@ -121,17 +127,12 @@ export default function App() {
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="mess" element={<MessManagement />} />
-<<<<<<< HEAD
-          <Route path="students" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentsDesk /></ProtectedRoute>} />
           <Route path="community" element={<CommunitySentiment />} />
         </Route>
 
         <Route path="/proctor" element={<ProtectedRoute allowedRoles={['proctor', 'hostel_admin']}><AppShell role="proctor" /></ProtectedRoute>}>
           <Route path="dashboard" element={<ProctorDashboard />} />
           <Route path="gatepass" element={<GatepassManagement />} />
-=======
-          <Route path="community" element={<CommunitySentiment />} />
->>>>>>> abeb5f8 (chore: solve merge conflicts and stage community features)
         </Route>
 
         {/* Guard Routes */}

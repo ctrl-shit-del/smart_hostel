@@ -1,30 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { LayoutDashboard, Users, DoorOpen, MessageSquare, AlertTriangle, CheckCircle2, QrCode } from 'lucide-react';
+import { LayoutDashboard, Users, DoorOpen, MessageSquare, CheckCircle2, CalendarDays, Megaphone, Trophy, Sparkles } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+
+const VTOP_BLUE = '#2455A3';
+const VTOP_BLUE_LIGHT = '#3497DB';
+const VTOP_PANEL_GRADIENT = 'linear-gradient(180deg, rgba(36,85,163,0.14) 0%, rgba(52,151,219,0.06) 100%)';
 
 export default function StudentDashboard() {
   const { user } = useAuthStore();
   const [data, setData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
+  const [events, setEvents] = useState([]);
   const [votingId, setVotingId] = useState('');
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1120 : true);
 
   useEffect(() => {
-    // We fetch current gatepass, complaints count, attendance stats
     Promise.all([
       api.get('/gatepass'),
       api.get('/complaints'),
       api.get('/attendance'),
-      api.get('/announcements')
-    ]).then(([gpRes, compRes, attRes, announcementRes]) => {
+      api.get('/announcements'),
+      api.get('/events'),
+    ]).then(([gpRes, compRes, attRes, announcementRes, eventsRes]) => {
       setData({
         activeGp: gpRes.gatepasses?.find(g => g.status === 'Approved' || g.status === 'Active'),
         openComplaints: compRes.complaints?.filter(c => ['Open','Assigned','In Progress'].includes(c.status)).length || 0,
-        attSummary: attRes.summary || {}
+        attSummary: attRes.summary || {},
       });
       setAnnouncements(announcementRes.announcements || []);
+      setEvents(eventsRes.events || []);
     }).catch(() => toast.error('Failed to load dashboard data'));
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1120);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleVote = async (announcementId, optionLabel) => {
@@ -42,10 +55,30 @@ export default function StudentDashboard() {
     }
   };
 
+  const latestAnnouncements = announcements
+    .filter((announcement) => !['Spotlight', 'Sports', 'Activity'].includes(announcement.category))
+    .slice(0, 4);
+
+  const activityItems = [
+    ...events.map((event) => ({ ...event, source: 'event' })),
+    ...announcements
+      .filter((announcement) => ['Sports', 'Activity'].includes(announcement.category))
+      .map((announcement) => ({ ...announcement, source: 'announcement' })),
+  ].slice(0, 5);
+
+  const spotlight = announcements.find((announcement) => announcement.category === 'Spotlight') || {
+    title: 'Hostel Excellence Spotlight',
+    content: 'Block-wise wins, research achievements, and community milestones will appear here as a premium campus highlight.',
+  };
+
   return (
-    <div style={{ display: 'flex', gap: 24, flexDirection: window.innerWidth < 1024 ? 'column' : 'row' }}>
-      {/* Main Content (80%) */}
-      <div style={{ flex: '1 1 75%', minWidth: 0 }}>
+    <div style={{
+      display: 'grid',
+      gap: 24,
+      gridTemplateColumns: isDesktop ? 'minmax(0, 1fr) 320px' : '1fr',
+      alignItems: 'start',
+    }}>
+      <div style={{ minWidth: 0 }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: 8, background: 'var(--grad-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
           Welcome back, {user?.name?.split(' ')[0]}
         </h1>
@@ -89,15 +122,15 @@ export default function StudentDashboard() {
 
         <div style={{ marginTop: 32 }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <LayoutDashboard size={20} color="var(--brand-primary)" />
+            <LayoutDashboard size={20} color={VTOP_BLUE} />
             Recent Announcements
           </h2>
           <div style={{ display: 'grid', gap: 14 }}>
-            {announcements.filter(a => a.category !== 'Spotlight' && a.category !== 'Sports' && a.category !== 'Activity').length === 0 && (
+            {latestAnnouncements.length === 0 && (
               <div className="card" style={{ padding: 20, color: 'var(--text-muted)', textAlign: 'center' }}>No general announcements at the moment.</div>
             )}
 
-            {announcements.filter(a => a.category !== 'Spotlight' && a.category !== 'Sports' && a.category !== 'Activity').map((announcement) => (
+            {latestAnnouncements.map((announcement) => (
               <div key={announcement._id} className="card animation-slide-up" style={{ padding: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                   <div>
@@ -140,64 +173,79 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Right Panel (25%) */}
-      <div style={{ flex: '0 0 25%', minWidth: 300, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {/* Spotlight Section */}
-        <section>
-          <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircle2 size={18} color="#10b981" />
-            Hostel Spotlights
-          </h2>
+      <aside style={{ position: isDesktop ? 'sticky' : 'static', top: 96, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <section className="glass-card" style={{ padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <Megaphone size={18} color={VTOP_BLUE} />
+            <h2 style={{ fontSize: '1rem', fontWeight: 800 }}>Announcements</h2>
+          </div>
           <div style={{ display: 'grid', gap: 12 }}>
-            {announcements.filter(a => a.category === 'Spotlight').length > 0 ? (
-              announcements.filter(a => a.category === 'Spotlight').map(a => (
-                <div key={a._id} className="card" style={{ padding: 16, borderLeft: '4px solid #10b981' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>{a.title}</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{a.content}</p>
+            {latestAnnouncements.length > 0 ? latestAnnouncements.map((announcement) => (
+              <div key={announcement._id} style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{announcement.title}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+                  {announcement.content}
                 </div>
-              ))
-            ) : (
-              <div className="card" style={{ padding: 20, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                <Users size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
-                <div>No spotlights today</div>
               </div>
+            )) : (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>No active announcements.</div>
             )}
           </div>
         </section>
 
-        {/* Sports & Activities Section */}
-        <section>
-          <h2 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: 12, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <LayoutDashboard size={18} color="var(--brand-primary)" />
-            Sports & Activities
-          </h2>
+        <section className="glass-card" style={{ padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <CalendarDays size={18} color={VTOP_BLUE} />
+            <h2 style={{ fontSize: '1rem', fontWeight: 800 }}>Sports & Activities</h2>
+          </div>
           <div style={{ display: 'grid', gap: 12 }}>
-            {announcements.filter(a => ['Sports', 'Activity'].includes(a.category)).length > 0 ? (
-              announcements.filter(a => ['Sports', 'Activity'].includes(a.category)).map(a => (
-                <div key={a._id} className="card" style={{ padding: 16, borderLeft: `4px solid ${a.category === 'Sports' ? '#ef4444' : '#3b82f6'}` }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, marginBottom: 4, color: a.category === 'Sports' ? '#ef4444' : '#3b82f6', textTransform: 'uppercase' }}>
-                    {a.category}
+            {activityItems.length > 0 ? activityItems.map((item, index) => (
+              <div key={item._id || item.id || `${item.title}-${index}`} style={{ padding: 14, borderRadius: 14, background: 'rgba(36,85,163,0.08)', border: '1px solid rgba(52,151,219,0.18)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{item.title}</div>
+                  <span className="badge" style={{ background: 'rgba(36,85,163,0.16)', color: VTOP_BLUE_LIGHT }}>
+                    {item.source === 'event' ? 'Event' : item.category}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  {item.content || item.description || 'Upcoming hostel activity.'}
+                </div>
+                {(item.date || item.eventDate || item.startDate) && (
+                  <div style={{ fontSize: '0.74rem', color: VTOP_BLUE_LIGHT, marginTop: 8, fontWeight: 700 }}>
+                    {new Date(item.date || item.eventDate || item.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </div>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>{a.title}</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{a.content}</p>
-                </div>
-              ))
-            ) : (
-              <div className="card" style={{ padding: 20, textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                <LayoutDashboard size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
-                <div>No upcoming events</div>
+                )}
               </div>
+            )) : (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>No upcoming sports or activities.</div>
             )}
           </div>
         </section>
 
-        {/* Quick Links / Info */}
-        <div className="card" style={{ padding: 20, background: 'var(--grad-brand)', color: 'white' }}>
-          <h4 style={{ fontWeight: 800, marginBottom: 8 }}>Need Help?</h4>
-          <p style={{ fontSize: '0.8rem', opacity: 0.9, marginBottom: 16 }}>Contact the hostel office for any urgent issues or gatepass queries.</p>
-          <button className="btn" style={{ width: '100%', background: 'white', color: 'var(--brand-primary)', fontWeight: 700 }}>Contact Warden</button>
-        </div>
-      </div>
+        <section className="glass-card" style={{ padding: 0, overflow: 'hidden', background: VTOP_PANEL_GRADIENT, border: '1px solid rgba(52,151,219,0.2)' }}>
+          <div style={{ padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <Trophy size={18} color={VTOP_BLUE_LIGHT} />
+              <h2 style={{ fontSize: '1rem', fontWeight: 800 }}>Spotlight</h2>
+            </div>
+            <div style={{
+              padding: 16,
+              borderRadius: 18,
+              background: 'linear-gradient(135deg, rgba(36,85,163,0.24), rgba(52,151,219,0.12))',
+              border: '1px solid rgba(52,151,219,0.18)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#bfdbfe', fontSize: '0.74rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+                <Sparkles size={14} /> VTOPCC Highlight
+              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: 8 }}>{spotlight.title}</div>
+              <div style={{ fontSize: '0.82rem', color: 'rgba(226,232,240,0.82)', lineHeight: 1.6 }}>
+                {spotlight.content}
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
     </div>
   );
 }
