@@ -18,6 +18,13 @@ export default defineConfig({
         target: 'http://127.0.0.1:5000',
         ws: true,
       },
+      '/face-api': {
+        target: 'http://127.0.0.1:6001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/face-api/, ''),
+      },
     },
   },
 })
+
+

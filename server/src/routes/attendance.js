@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
 const { authenticate } = require('../middleware/auth');
-const { isWarden, isFloorAdmin } = require('../middleware/rbac');
+const { isWarden, isFloorAdmin, isStudent } = require('../middleware/rbac');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { generateQRToken, verifyQRToken } = require('../utils/jwt');
 const { ATTENDANCE_STATUS, ATTENDANCE_METHOD, SOCKET_EVENTS } = require('../../../shared/constants');
@@ -158,6 +158,131 @@ router.post('/wifi/sync', authenticate, isFloorAdmin, asyncHandler(async (req, r
   // Flag anomalies: students NOT in detected_devices → absent
   emitToRole('warden', SOCKET_EVENTS.ATTENDANCE_UPDATED, { date: dateStr, synced: students.length });
   res.json({ success: true, message: `WiFi sync complete. ${students.length} student(s) marked present.`, date: dateStr });
+}));
+
+// ─── Night Attendance Window ─────────────────────────────────────────────────
+
+// GET /api/v1/attendance/window/status — any authenticated user checks their block's window
+router.get('/window/status', authenticate, asyncHandler(async (req, res) => {
+  const Block = require('../models/Block');
+  const blockName = req.user.block_name || req.query.block || 'A Block';
+
+  const block = await Block.findOne({ block_name: blockName }).select(
+    'block_name attendance_window_open attendance_window_opened_at attendance_window_closed_at wifi_ip'
+  );
+  if (!block) return res.status(404).json({ success: false, message: 'Block not found' });
+
+  // Check if student already marked present today
+  const dateStr = format(new Date(), 'yyyy-MM-dd');
+  let already_checked_in = false;
+  if (req.user.role === 'student') {
+    const existing = await Attendance.findOne({ student_id: req.user._id, date: dateStr, status: ATTENDANCE_STATUS.PRESENT });
+    already_checked_in = !!existing;
+  }
+
+  res.json({
+    success: true,
+    block_name: block.block_name,
+    window_open: block.attendance_window_open,
+    opened_at: block.attendance_window_opened_at,
+    closed_at: block.attendance_window_closed_at,
+    wifi_ip: block.wifi_ip || null,
+    already_checked_in,
+    date: dateStr,
+  });
+}));
+
+// POST /api/v1/attendance/window/toggle — warden/hostel_admin flips their block's window
+router.post('/window/toggle', authenticate, isWarden, asyncHandler(async (req, res) => {
+  const Block = require('../models/Block');
+  // Warden uses their own block; hostel_admin can pass block_name in body; fallback to 'A Block' for testing
+  const blockName = req.user.block_name || req.body.block_name || 'A Block';
+
+  const block = await Block.findOne({ block_name: blockName });
+  if (!block) return res.status(404).json({ success: false, message: `Block "${blockName}" not found` });
+
+  const newState = !block.attendance_window_open;
+  const updateFields = { attendance_window_open: newState };
+  if (newState) updateFields.attendance_window_opened_at = new Date();
+  else updateFields.attendance_window_closed_at = new Date();
+
+  await Block.findByIdAndUpdate(block._id, updateFields);
+
+  emitToBlock(blockName, SOCKET_EVENTS.ATTENDANCE_WINDOW_TOGGLED, {
+    block_name: blockName,
+    window_open: newState,
+    toggled_by: req.user.name,
+    timestamp: new Date().toISOString(),
+  });
+
+  res.json({
+    success: true,
+    block_name: blockName,
+    window_open: newState,
+    message: `Night attendance window ${newState ? 'opened' : 'closed'} for ${blockName}`,
+  });
+}));
+
+// POST /api/v1/attendance/face/checkin — student submits liveness-verified face attendance
+router.post('/face/checkin', authenticate, isStudent, asyncHandler(async (req, res) => {
+  const Block = require('../models/Block');
+
+  const blockName = req.user.block_name || 'A Block';
+
+  const block = await Block.findOne({ block_name: blockName }).select('attendance_window_open wifi_ip');
+  if (!block) return res.status(404).json({ success: false, message: 'Block not found' });
+  if (!block.attendance_window_open) {
+    return res.status(403).json({ success: false, message: 'Attendance window is not currently open for your block' });
+  }
+
+  const dateStr = format(new Date(), 'yyyy-MM-dd');
+  const existing = await Attendance.findOne({ student_id: req.user._id, date: dateStr });
+  if (existing && existing.status === ATTENDANCE_STATUS.PRESENT) {
+    return res.status(409).json({ success: false, message: 'Attendance already marked for today' });
+  }
+
+  // Capture client IP (IP whitelisting currently open — all IPs accepted, IP is logged only)
+  const clientIp =
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    'unknown';
+
+  const record = await Attendance.findOneAndUpdate(
+    { student_id: req.user._id, date: dateStr },
+    {
+      $set: {
+        student_id: req.user._id,
+        student_name: req.user.name,
+        register_number: req.user.register_number,
+        block_name: req.user.block_name,
+        floor_no: req.user.floor_no,
+        room_no: req.user.room_no,
+        date: dateStr,
+        status: ATTENDANCE_STATUS.PRESENT,
+        method: ATTENDANCE_METHOD.FACE,
+        face_detected_at: new Date(),
+        client_ip: clientIp,
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  emitToBlock(blockName, SOCKET_EVENTS.ATTENDANCE_UPDATED, {
+    student_name: req.user.name,
+    register_number: req.user.register_number,
+    method: 'face',
+    date: dateStr,
+    block_name: blockName,
+  });
+  emitToRole('warden', SOCKET_EVENTS.ATTENDANCE_UPDATED, {
+    type: 'face_checkin',
+    student_name: req.user.name,
+    block_name: blockName,
+    date: dateStr,
+  });
+
+  res.json({ success: true, message: '✅ Face attendance marked successfully!', record });
 }));
 
 module.exports = router;
