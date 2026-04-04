@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 import api from '../../lib/api';
 import { usePortalCallStore } from '../../store/callStore';
+import { useSocketEvent } from '../../hooks/useSocket';
 
 const STATUS_COLORS = {
   Pending: '#f59e0b',
@@ -28,6 +29,7 @@ export default function MyGatepass() {
   const [gatepasses, setGatepasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [qrImages, setQrImages] = useState({});
+  const [visibleQrIds, setVisibleQrIds] = useState({});
   const [messageDrafts, setMessageDrafts] = useState({});
   const [sendingId, setSendingId] = useState(null);
   const lastCallUpdate = usePortalCallStore((state) => state.lastCallUpdate);
@@ -48,9 +50,9 @@ export default function MyGatepass() {
       for (const gatepass of nextGatepasses) {
         if (
           ['Approved', 'Active', 'Returned'].includes(gatepass.status) &&
-          (gatepass.qr_code_id || gatepass.qr_token)
+          (gatepass.qr_display_value || gatepass.qr_code_id || gatepass.qr_token)
         ) {
-          const qrValue = gatepass.qr_code_id || gatepass.qr_token;
+          const qrValue = gatepass.qr_display_value || gatepass.qr_code_id || gatepass.qr_token;
           nextQrImages[gatepass._id] = await QRCode.toDataURL(qrValue, {
             width: 150,
             margin: 1,
@@ -69,6 +71,13 @@ export default function MyGatepass() {
   useEffect(() => {
     fetchGatepasses();
   }, [lastCallUpdate]);
+
+  useSocketEvent('gatepass:approved', fetchGatepasses);
+  useSocketEvent('gatepass:rejected', fetchGatepasses);
+
+  const toggleQr = (gatepassId) => {
+    setVisibleQrIds((current) => ({ ...current, [gatepassId]: !current[gatepassId] }));
+  };
 
   const submitLateExcuse = async (gatepassId) => {
     const excuseText = (messageDrafts[gatepassId] || '').trim();
@@ -156,12 +165,35 @@ export default function MyGatepass() {
                         <span style={{ fontWeight: 700 }}>{gatepass.qr_code_id}</span>
                       </div>
                     )}
+                    {gatepass.type === 'Outing' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>QR Uses:</span>
+                        <span style={{ fontWeight: 700 }}>{gatepass.register_number}</span>
+                      </div>
+                    )}
                   </div>
 
                   {gatepass.rejection_reason && gatepass.status === 'Rejected' && (
                     <div style={{ marginTop: 12, padding: 8, background: '#ef444415', color: '#ef4444', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>
                       Rejected: {gatepass.rejection_reason}
                     </div>
+                  )}
+
+                  {gatepass.approved_by_label && (
+                    <div style={{ marginTop: 12, padding: 10, background: 'rgba(20,184,166,0.12)', color: '#0f766e', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700 }}>
+                      Decision by: {gatepass.approved_by_label}
+                    </div>
+                  )}
+
+                  {qrImages[gatepass._id] && (
+                    <button
+                      className="btn btn-secondary"
+                      style={{ marginTop: 12, width: '100%', justifyContent: 'center' }}
+                      onClick={() => toggleQr(gatepass._id)}
+                    >
+                      <QrCode size={16} />
+                      {visibleQrIds[gatepass._id] ? 'Hide My QR' : 'View My QR'}
+                    </button>
                   )}
 
                   {gatepass.is_overdue && (
@@ -227,14 +259,18 @@ export default function MyGatepass() {
                   )}
                 </div>
 
-                {qrImages[gatepass._id] && (
+                {qrImages[gatepass._id] && visibleQrIds[gatepass._id] && (
                   <div style={{ padding: 16, borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--bg-elevated)' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <QrCode size={12} /> Scan at security gate
                     </div>
                     <img src={qrImages[gatepass._id]} alt="QR" style={{ width: 120, height: 120, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                     <div style={{ marginTop: 8, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                      {gatepass.qr_code_id ? `Leave QR ID: ${gatepass.qr_code_id}` : 'Legacy signed QR'}
+                      {gatepass.type === 'Outing'
+                        ? `Outing QR tied to register number ${gatepass.register_number}`
+                        : gatepass.qr_code_id
+                          ? `Leave QR ID: ${gatepass.qr_code_id}`
+                          : 'Legacy signed QR'}
                     </div>
                     {gatepass.security_message && (
                       <div style={{ marginTop: 10, fontSize: '0.78rem', textAlign: 'center', color: 'var(--text-secondary)' }}>

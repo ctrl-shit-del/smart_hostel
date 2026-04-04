@@ -3,7 +3,7 @@ const router = express.Router();
 const Student = require('../models/Student');
 const Staff = require('../models/Staff');
 const { authenticate } = require('../middleware/auth');
-const { isAdmin, isWarden } = require('../middleware/rbac');
+const { isAdmin, isWarden, authorize } = require('../middleware/rbac');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 // GET /api/v1/users — admin/warden only, lists students
@@ -63,6 +63,36 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
   res.json({ success: true, user });
+}));
+
+// PUT /api/v1/users/:id/credentials
+router.put('/:id/credentials', authenticate, authorize('hostel_admin', 'proctor', 'warden'), asyncHandler(async (req, res) => {
+  const student = await Student.findById(req.params.id).select('-password -face_embeddings');
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student not found' });
+  }
+
+  const enable = req.body.enable !== false;
+  const updates = enable
+    ? {
+        is_active: true,
+        credentials_disabled_at: null,
+        credentials_disabled_reason: null,
+      }
+    : {
+        is_active: false,
+        credentials_disabled_at: new Date(),
+        credentials_disabled_reason: req.body.reason || 'Disabled by hostel office.',
+      };
+
+  Object.assign(student, updates);
+  await student.save();
+
+  res.json({
+    success: true,
+    message: enable ? 'Student credentials re-enabled' : 'Student credentials disabled',
+    user: student,
+  });
 }));
 
 module.exports = router;

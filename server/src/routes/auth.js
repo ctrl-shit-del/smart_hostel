@@ -9,6 +9,7 @@ const { authenticate } = require('../middleware/auth');
 const ROLE_CATEGORIES = {
   student: ['student'],
   warden: ['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'faculty'],
+  proctor: ['proctor', 'hostel_admin'],
   service: ['guard', 'security_incharge', 'housekeeping', 'technician', 'dhobi'],
 };
 
@@ -58,6 +59,30 @@ router.post('/login', asyncHandler(async (req, res) => {
         return res.status(403).json({ success: false, message: 'This account is not a warden/faculty account. Please use the correct login card.' });
       }
     }
+  } else if (loginCategory === 'proctor') {
+    const Staff = require('../models/Staff');
+    user = await Staff.findOne({
+      $or: [
+        { username: new RegExp(`^${identifier}$`, 'i') },
+        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+      ]
+    });
+    if (user) {
+      isStaff = true;
+      if (!ROLE_CATEGORIES.proctor.includes(user.effectiveRole)) {
+        return res.status(403).json({ success: false, message: 'This account is not a proctor account. Please use the correct login card.' });
+      }
+    } else {
+      user = await Student.findOne({
+        $or: [
+          { register_number: identifier.toUpperCase() },
+          { email: identifier.toLowerCase() }
+        ]
+      });
+      if (user && !ROLE_CATEGORIES.proctor.includes(user.role)) {
+        return res.status(403).json({ success: false, message: 'This account is not a proctor account. Please use the correct login card.' });
+      }
+    }
   } else if (loginCategory === 'service') {
     user = await Staff.findOne({
       $or: [
@@ -92,6 +117,13 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   if (!user) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+
+  if (!isStaff && user.is_active === false) {
+    return res.status(403).json({
+      success: false,
+      message: user.credentials_disabled_reason || 'Your hostel credentials are disabled. Please visit the hostel office.',
+    });
   }
 
   const isMatch = await user.comparePassword(password);

@@ -43,6 +43,7 @@ staffSchema.virtual('assigned_hostels_list').get(function() {
 
 const ROLE_MAP = {
   warden: 'warden',
+  proctor: 'proctor',
   guard: 'guard',
   security: 'guard',
   'security incharge': 'security_incharge',

@@ -26,6 +26,13 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
+    if (user.role === 'student' && user.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: user.credentials_disabled_reason || 'Your hostel credentials are disabled. Please visit the hostel office.',
+      });
+    }
+
     req.user = user;
     if (decoded.role) req.user.role = decoded.role;
     next();

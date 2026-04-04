@@ -41,6 +41,9 @@ const studentSchema = new mongoose.Schema({
   is_active: { type: Boolean, default: true },
   is_flagged: { type: Boolean, default: false },
   is_campus_wide: { type: Boolean, default: false },
+  outing_flag_count: { type: Number, default: 0, min: 0 },
+  credentials_disabled_at: { type: Date },
+  credentials_disabled_reason: { type: String, trim: true },
 
   created_at: { type: Date, default: Date.now },
   last_login: { type: Date },

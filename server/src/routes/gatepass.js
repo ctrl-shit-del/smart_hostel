@@ -5,7 +5,7 @@ const Gatepass = require('../models/Gatepass');
 const Student = require('../models/Student');
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { authorize, isWarden, isGuard } = require('../middleware/rbac');
+const { authorize, isWarden, isProctor, isGuard } = require('../middleware/rbac');
 const { generateQRToken, verifyQRToken } = require('../utils/jwt');
 const { emitToUser, emitToRole } = require('../utils/socket');
 const { transcribeAudio, synthesizeSpeech } = require('../services/sarvam');
@@ -137,10 +137,21 @@ const normalizeLateReturnState = (gatepass, now = new Date()) => {
   return gatepass;
 };
 
+const getDisplayQrValue = (gatepass) => {
+  if (gatepass.type === GATEPASS_TYPES.OUTING) {
+    return gatepass.register_number;
+  }
+
+  return gatepass.qr_code_id || gatepass.qr_token || gatepass.register_number;
+};
+
 const serializeGatepass = (gatepass) => {
   normalizeLateReturnState(gatepass);
   const payload = gatepass.toObject ? gatepass.toObject() : { ...gatepass };
   const late = payload.late_return || {};
+  const approvedByLabel = payload.approved_by_name
+    ? `${payload.approved_by_name}${payload.approved_by_role ? ` (${payload.approved_by_role})` : ''}`
+    : null;
 
   return {
     ...payload,
@@ -152,6 +163,8 @@ const serializeGatepass = (gatepass) => {
       !!payload.is_overdue &&
       late.excuse_status === LATE_RETURN_STATUS.PENDING_STUDENT,
     security_message: late.security_message || defaultSecurityMessage(payload),
+    approved_by_label: approvedByLabel,
+    qr_display_value: getDisplayQrValue(payload),
   };
 };
 
@@ -192,11 +205,13 @@ const parseScanCode = (body = {}) => (
   ''
 );
 
-const resolveGatepassFromScan = async (body = {}) => {
+const resolveGatepassFromScan = async (body = {}, options = {}) => {
   const rawCode = `${parseScanCode(body)}`.trim();
   if (!rawCode) {
     return { gatepass: null, rawCode };
   }
+
+  const statuses = Array.isArray(options.statuses) && options.statuses.length ? options.statuses : null;
 
   if (/^\d+$/.test(rawCode)) {
     const gatepass = await Gatepass.findOne({ qr_code_id: rawCode });
@@ -208,7 +223,13 @@ const resolveGatepassFromScan = async (body = {}) => {
     const gatepass = await Gatepass.findById(decoded.gp_id);
     return { gatepass, rawCode };
   } catch (_err) {
-    return { gatepass: null, rawCode };
+    const query = { register_number: rawCode.toUpperCase() };
+    if (statuses) {
+      query.status = { $in: statuses };
+    }
+
+    const gatepass = await Gatepass.findOne(query).sort({ applied_at: -1 });
+    return { gatepass, rawCode };
   }
 };
 
@@ -244,6 +265,40 @@ const buildScanResponse = (gatepass, message, status) => ({
   gatepass: serializeGatepass(gatepass),
   security_message: gatepass.late_return?.security_message || defaultSecurityMessage(gatepass),
 });
+
+const applyOutingTimingViolation = async (gatepass, reason) => {
+  if (gatepass.type !== GATEPASS_TYPES.OUTING) {
+    return null;
+  }
+
+  const student = await Student.findById(gatepass.student_id);
+  if (!student) {
+    return null;
+  }
+
+  if (!gatepass.timing_violation_flagged) {
+    gatepass.timing_violation_flagged = true;
+    gatepass.timing_violation_reason = reason;
+    gatepass.timing_violation_flagged_at = new Date();
+
+    student.outing_flag_count = (student.outing_flag_count || 0) + 1;
+    student.is_flagged = student.outing_flag_count > 0;
+
+    if (student.outing_flag_count >= 2) {
+      student.is_active = false;
+      student.credentials_disabled_at = new Date();
+      student.credentials_disabled_reason = 'Disabled after 2 outing timing violations. Please visit the hostel office.';
+    }
+
+    await Promise.all([gatepass.save(), student.save()]);
+  }
+
+  return {
+    count: student.outing_flag_count || 0,
+    locked: student.is_active === false,
+    disabled_reason: student.credentials_disabled_reason || null,
+  };
+};
 
 // Cron: check overdue gatepasses every 15 minutes.
 cron.schedule('*/15 * * * *', async () => {
@@ -371,7 +426,12 @@ router.post('/apply', authenticate, asyncHandler(async (req, res) => {
     guardian_relation,
   });
 
-  emitToRole(ROLES.WARDEN, SOCKET_EVENTS.DASHBOARD_UPDATE, { type: 'new_gatepass', gatepass_id: gatepass._id });
+  emitToRole(ROLES.PROCTOR, SOCKET_EVENTS.DASHBOARD_UPDATE, {
+    type: 'new_gatepass',
+    gatepass_id: gatepass._id,
+    student_name: gatepass.student_name,
+    register_number: gatepass.register_number,
+  });
   res.status(201).json({
     success: true,
     message: 'Gatepass application submitted',
@@ -386,6 +446,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
 
   if (req.user.role === ROLES.STUDENT) query.student_id = req.user._id;
   else if (req.user.role === ROLES.WARDEN) query.block_name = req.user.block_name;
+  else if (req.user.role === ROLES.PROCTOR && req.user.block_name) query.block_name = req.user.block_name;
 
   if (status) query.status = status;
   if (type) query.type = type;
@@ -461,13 +522,13 @@ router.get('/qr/:qrCodeId', authenticate, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/v1/gatepass/:id/approve
-router.put('/:id/approve', authenticate, isWarden, asyncHandler(async (req, res) => {
+router.put('/:id/approve', authenticate, isProctor, asyncHandler(async (req, res) => {
   const gatepass = await Gatepass.findById(req.params.id);
   if (!gatepass) {
     return res.status(404).json({ success: false, message: 'Gatepass not found' });
   }
 
-  if (req.user.role === ROLES.WARDEN && gatepass.block_name !== req.user.block_name) {
+  if (req.user.role === ROLES.PROCTOR && req.user.block_name && gatepass.block_name !== req.user.block_name) {
     return res.status(403).json({ success: false, message: 'This gatepass belongs to a different block' });
   }
 
@@ -486,6 +547,8 @@ router.put('/:id/approve', authenticate, isWarden, asyncHandler(async (req, res)
 
   gatepass.status = GATEPASS_STATUS.APPROVED;
   gatepass.approved_by = req.user._id;
+  gatepass.approved_by_name = req.user.name;
+  gatepass.approved_by_role = req.user.role;
   gatepass.approved_at = new Date();
   gatepass.qr_token = qrToken;
   normalizeLateReturnState(gatepass);
@@ -495,11 +558,13 @@ router.put('/:id/approve', authenticate, isWarden, asyncHandler(async (req, res)
     gatepass_id: gatepass._id,
     qr_token: qrToken,
     qr_code_id: gatepass.qr_code_id,
+    approved_by_name: gatepass.approved_by_name,
+    approved_by_role: gatepass.approved_by_role,
   });
 
   res.json({
     success: true,
-    message: 'Gatepass approved',
+    message: 'Gatepass approved by proctor',
     gatepass: serializeGatepass(gatepass),
     qr_token: qrToken,
     qr_code_id: gatepass.qr_code_id,
@@ -507,23 +572,31 @@ router.put('/:id/approve', authenticate, isWarden, asyncHandler(async (req, res)
 }));
 
 // PUT /api/v1/gatepass/:id/reject
-router.put('/:id/reject', authenticate, isWarden, asyncHandler(async (req, res) => {
+router.put('/:id/reject', authenticate, isProctor, asyncHandler(async (req, res) => {
   const { reason } = req.body;
   const gatepass = await Gatepass.findById(req.params.id);
   if (!gatepass) {
     return res.status(404).json({ success: false, message: 'Gatepass not found' });
   }
 
-  if (req.user.role === ROLES.WARDEN && gatepass.block_name !== req.user.block_name) {
+  if (req.user.role === ROLES.PROCTOR && req.user.block_name && gatepass.block_name !== req.user.block_name) {
     return res.status(403).json({ success: false, message: 'This gatepass belongs to a different block' });
   }
 
   gatepass.status = GATEPASS_STATUS.REJECTED;
   gatepass.rejection_reason = reason;
+  gatepass.approved_by = req.user._id;
+  gatepass.approved_by_name = req.user.name;
+  gatepass.approved_by_role = req.user.role;
   await gatepass.save();
 
-  emitToUser(gatepass.student_id, SOCKET_EVENTS.GATEPASS_REJECTED, { gatepass_id: gatepass._id, reason });
-  res.json({ success: true, message: 'Gatepass rejected', gatepass: serializeGatepass(gatepass) });
+  emitToUser(gatepass.student_id, SOCKET_EVENTS.GATEPASS_REJECTED, {
+    gatepass_id: gatepass._id,
+    reason,
+    approved_by_name: gatepass.approved_by_name,
+    approved_by_role: gatepass.approved_by_role,
+  });
+  res.json({ success: true, message: 'Gatepass rejected by proctor', gatepass: serializeGatepass(gatepass) });
 }));
 
 // POST /api/v1/gatepass/:id/late-excuse
@@ -718,18 +791,38 @@ router.get('/:id/late-message-audio', authenticate, asyncHandler(async (req, res
 
 // POST /api/v1/gatepass/scan/exit — security scans QR on exit
 router.post('/scan/exit', authenticate, isGuard, asyncHandler(async (req, res) => {
-  const { gatepass } = await resolveGatepassFromScan(req.body);
+  const { gatepass } = await resolveGatepassFromScan(req.body, { statuses: [GATEPASS_STATUS.APPROVED] });
   if (!gatepass || gatepass.status !== GATEPASS_STATUS.APPROVED) {
     return res.status(400).json({ success: false, message: 'Gatepass not valid for exit', status: 'RED' });
   }
 
+  const now = new Date();
+  if (gatepass.type === GATEPASS_TYPES.OUTING && now > new Date(gatepass.expected_return)) {
+    const violation = await applyOutingTimingViolation(
+      gatepass,
+      'Attempted exit scan after the approved outing window had ended.',
+    );
+
+    return res.status(403).json({
+      success: false,
+      message: violation?.locked
+        ? 'Outing QR expired. Student credentials are now disabled. Please visit the hostel office.'
+        : 'Outing QR expired. This pass can no longer be scanned after the approved return time.',
+      status: 'RED',
+      flag_count: violation?.count || 0,
+      credentials_locked: violation?.locked || false,
+      disabled_reason: violation?.disabled_reason || null,
+      student_name: gatepass.student_name,
+      register_number: gatepass.register_number,
+    });
+  }
+
   gatepass.status = GATEPASS_STATUS.ACTIVE;
-  gatepass.actual_exit = new Date();
+  gatepass.actual_exit = now;
   gatepass.exit_guard = req.user._id;
   normalizeLateReturnState(gatepass);
   await gatepass.save();
 
-  const now = new Date();
   const timeLeft = (new Date(gatepass.expected_return) - now) / 60000;
   const scanStatus = timeLeft > 30 ? 'GREEN' : timeLeft > 0 ? 'YELLOW' : 'RED';
 
@@ -742,12 +835,32 @@ router.post('/scan/exit', authenticate, isGuard, asyncHandler(async (req, res) =
 
 // POST /api/v1/gatepass/scan/entry — security scans QR on return
 router.post('/scan/entry', authenticate, isGuard, asyncHandler(async (req, res) => {
-  const { gatepass } = await resolveGatepassFromScan(req.body);
+  const { gatepass } = await resolveGatepassFromScan(req.body, { statuses: [GATEPASS_STATUS.ACTIVE] });
   if (!gatepass || gatepass.status !== GATEPASS_STATUS.ACTIVE) {
     return res.status(400).json({ success: false, message: 'Gatepass not active', status: 'RED' });
   }
 
   const now = new Date();
+  if (gatepass.type === GATEPASS_TYPES.OUTING && now > new Date(gatepass.expected_return)) {
+    const violation = await applyOutingTimingViolation(
+      gatepass,
+      'Attempted entry scan after the approved outing return time had ended.',
+    );
+
+    return res.status(403).json({
+      success: false,
+      message: violation?.locked
+        ? 'Outing time exceeded. Credentials disabled after 2 flags. Student must visit the hostel office.'
+        : 'Outing time exceeded. QR cannot be scanned after the approved outing time.',
+      status: 'RED',
+      flag_count: violation?.count || 0,
+      credentials_locked: violation?.locked || false,
+      disabled_reason: violation?.disabled_reason || null,
+      student_name: gatepass.student_name,
+      register_number: gatepass.register_number,
+    });
+  }
+
   const isLate = now > new Date(gatepass.expected_return);
 
   gatepass.status = GATEPASS_STATUS.RETURNED;

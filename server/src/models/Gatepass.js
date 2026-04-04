@@ -30,6 +30,8 @@ const gatepassSchema = new mongoose.Schema({
   // Status & approval
   status: { type: String, enum: Object.values(GATEPASS_STATUS), default: GATEPASS_STATUS.PENDING },
   approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+  approved_by_name: { type: String, trim: true },
+  approved_by_role: { type: String, trim: true },
   approved_at: { type: Date },
   rejection_reason: { type: String },
 
@@ -45,6 +47,9 @@ const gatepassSchema = new mongoose.Schema({
   is_overdue: { type: Boolean, default: false },
   overdue_alert_sent: { type: Boolean, default: false },
   late_return_count: { type: Number, default: 0 },
+  timing_violation_flagged: { type: Boolean, default: false },
+  timing_violation_reason: { type: String, trim: true },
+  timing_violation_flagged_at: { type: Date },
 
   late_return: {
     excuse_text: { type: String, trim: true },

@@ -4,6 +4,7 @@
 const ROLES = {
   STUDENT: 'student',
   WARDEN: 'warden',
+  PROCTOR: 'proctor',
   FLOOR_ADMIN: 'floor_admin',
   GUARD: 'guard',
   SECURITY_INCHARGE: 'security_incharge',

@@ -24,6 +24,12 @@ const ROLE_THEME = {
     glow: 'rgba(139,92,246,0.25)',
     badge: 'STAFF',
   },
+  proctor: {
+    accent: '#0f766e',
+    gradient: 'linear-gradient(135deg, #115e59 0%, #14b8a6 100%)',
+    glow: 'rgba(20,184,166,0.24)',
+    badge: 'PROCTOR',
+  },
   guard: {
     accent: '#f59e0b',       // amber
     gradient: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
@@ -85,6 +91,12 @@ const guardNav = [
   { to: '/guard/scan', icon: QrCode, label: 'Gate Scanner' },
 ];
 
+const proctorNav = [
+  { to: '/proctor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { divider: true, label: 'Approvals' },
+  { to: '/proctor/gatepass', icon: DoorOpen, label: 'Leave Requests' },
+];
+
 const securityNav = [
   { to: '/security/scan', icon: QrCode, label: 'QR Scanner' },
 ];
@@ -93,7 +105,7 @@ const dhobiNav = [
   { to: '/dhobi/scan', icon: WashingMachine, label: 'Laundry Scanner' },
 ];
 
-const navByRole = { student: studentNav, admin: adminNav, guard: guardNav, security: securityNav, dhobi: dhobiNav };
+const navByRole = { student: studentNav, admin: adminNav, proctor: proctorNav, guard: guardNav, security: securityNav, dhobi: dhobiNav };
 
 export default function AppShell({ role }) {
   const { user, logout } = useAuthStore();

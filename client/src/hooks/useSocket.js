@@ -37,7 +37,7 @@ export const useSocket = () => {
       addAlert({ type: 'info', title: data.title, message: data.content })
     );
     socket.on('gatepass:approved', () =>
-      addAlert({ type: 'success', title: 'Gatepass Approved', message: 'Your gatepass has been approved.' })
+      addAlert({ type: 'success', title: 'Gatepass Approved', message: 'Your gatepass has been approved by the proctor.' })
     );
     socket.on('gatepass:rejected', (data) =>
       addAlert({ type: 'danger', title: 'Gatepass Rejected', message: data.reason })
@@ -57,7 +57,9 @@ export const useSocket = () => {
       });
     });
     socket.on('dashboard:update', (data) => {
-      if (data?.type === 'late_return_excuse_submitted') {
+      if (data?.type === 'new_gatepass') {
+        addAlert({ type: 'info', title: 'New Leave Request', message: `${data?.student_name || 'A student'} submitted a gatepass request.` });
+      } else if (data?.type === 'late_return_excuse_submitted') {
         addAlert({ type: 'warning', title: 'Late Return Message', message: 'A student sent a late-return reason.' });
       } else if (data?.type === 'late_return_follow_up_due') {
         addAlert({ type: 'warning', title: 'Portal Call Due', message: 'A late-return follow-up call is now due.' });

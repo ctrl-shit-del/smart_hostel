@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Shield, Wrench, Eye, EyeOff, Loader2, ChevronLeft } from 'lucide-react';
+import { GraduationCap, Shield, UserCheck, Wrench, Eye, EyeOff, Loader2, ChevronLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
@@ -25,6 +25,16 @@ const ROLE_CARDS = [
     idLabel: 'Staff ID / Email',
     accent: '#8b5cf6',    // violet for staff
     glow: 'rgba(139,92,246,0.2)',
+  },
+  {
+    id: 'proctor',
+    label: 'Proctor Login',
+    subtitle: 'Leave approvals & student movement',
+    icon: UserCheck,
+    placeholder: 'Proctor ID or Email',
+    idLabel: 'Proctor ID / Email',
+    accent: '#14b8a6',
+    glow: 'rgba(20,184,166,0.2)',
   },
   {
     id: 'service',
@@ -63,6 +73,7 @@ export default function LoginPage() {
       toast.success(`Welcome, ${res.user.name}!`);
       const role = res.user.role;
       if (role === 'student') navigate('/student/dashboard');
+      else if (role === 'proctor') navigate('/proctor/dashboard');
       else if (role === 'guard') navigate('/guard/scan');
       else if (role === 'security_incharge') navigate('/security/scan');
       else if (role === 'housekeeping' || role === 'dhobi') navigate('/dhobi/scan');

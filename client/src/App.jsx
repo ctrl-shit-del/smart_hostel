@@ -31,6 +31,7 @@ import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
 import HostelInfo from './pages/admin/HostelInfo';
 import StudentsDesk from './pages/admin/StudentsDesk';
+import ProctorDashboard from './pages/proctor/Dashboard';
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
@@ -54,6 +55,9 @@ function ProtectedRoute({ children, allowedRoles }) {
 function RoleRouter() {
   const { user } = useAuthStore();
   const role = user?.role;
+  if (role === 'proctor') {
+    return <Navigate to="/proctor/dashboard" replace />;
+  }
   if (role === 'hostel_admin' || role === 'warden' || role === 'floor_admin' || role === 'mess_incharge') {
     return <Navigate to="/admin/dashboard" replace />;
   }
@@ -110,6 +114,11 @@ export default function App() {
           <Route path="mess" element={<MessManagement />} />
           <Route path="students" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentsDesk /></ProtectedRoute>} />
           <Route path="community" element={<CommunitySentiment />} />
+        </Route>
+
+        <Route path="/proctor" element={<ProtectedRoute allowedRoles={['proctor', 'hostel_admin']}><AppShell role="proctor" /></ProtectedRoute>}>
+          <Route path="dashboard" element={<ProctorDashboard />} />
+          <Route path="gatepass" element={<GatepassManagement />} />
         </Route>
 
         {/* Guard Routes */}

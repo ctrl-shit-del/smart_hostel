@@ -19,12 +19,14 @@ const authorize = (...allowedRoles) => {
 // Shorthand role guards
 const isStudent = authorize(ROLES.STUDENT);
 const isWarden = authorize(ROLES.WARDEN, ROLES.HOSTEL_ADMIN);
+const isProctor = authorize(ROLES.PROCTOR, ROLES.HOSTEL_ADMIN);
 const isFloorAdmin = authorize(ROLES.FLOOR_ADMIN, ROLES.WARDEN, ROLES.HOSTEL_ADMIN);
 const isGuard = authorize(ROLES.GUARD, ROLES.SECURITY_INCHARGE, ROLES.HOSTEL_ADMIN);
 const isAdmin = authorize(ROLES.HOSTEL_ADMIN);
 const isMessIncharge = authorize(ROLES.MESS_INCHARGE, ROLES.HOSTEL_ADMIN);
 const isStaff = authorize(
   ROLES.WARDEN,
+  ROLES.PROCTOR,
   ROLES.FLOOR_ADMIN,
   ROLES.GUARD,
   ROLES.SECURITY_INCHARGE,
@@ -34,4 +36,4 @@ const isStaff = authorize(
   ROLES.TECHNICIAN
 );
 
-module.exports = { authorize, isStudent, isWarden, isFloorAdmin, isGuard, isAdmin, isMessIncharge, isStaff };
+module.exports = { authorize, isStudent, isWarden, isProctor, isFloorAdmin, isGuard, isAdmin, isMessIncharge, isStaff };

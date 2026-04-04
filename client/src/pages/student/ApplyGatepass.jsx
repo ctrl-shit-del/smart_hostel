@@ -68,7 +68,7 @@ export default function ApplyGatepass() {
     setLoading(true);
     try {
       await api.post('/gatepass/apply', form);
-      toast.success('Gatepass applied successfully');
+      toast.success('Gatepass request sent to proctor successfully');
       navigate('/student/gatepass');
     } catch (err) {
       toast.error(err.message || 'Application failed');
