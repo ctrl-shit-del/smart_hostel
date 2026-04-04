@@ -11,11 +11,26 @@ router.get('/', authenticate, isWarden, asyncHandler(async (req, res) => {
   const { role, block, floor, page = 1, limit = 50 } = req.query;
   const query = { role: role || 'student' };
   
-  if (req.user.role === 'warden') query.block_name = req.user.block_name;
+  if (req.user.role === 'warden' && !req.query.register_number && !req.query.flagged) {
+    query.block_name = req.user.block_name;
+  }
   if (block) query.block_name = block;
   if (floor) {
     const floorInt = parseInt(floor);
     query.$or = [{ floor_no: floorInt }, { floor: `Floor ${floorInt}` }];
+  }
+  if (req.query.register_number) {
+    query.register_number = new RegExp('^' + req.query.register_number.trim() + '$', 'i');
+    delete query.block_name; // allow global search by exact register number
+  }
+  if (req.query.flagged === 'true') {
+    query.$or = [
+      { dhobi_offence: { $gt: 0 } },
+      { community_strikes: { $gt: 0 } },
+      { outing_flag_count: { $gt: 0 } },
+      { suspicious_flag_count: { $gt: 0 } },
+      { is_flagged: true }
+    ];
   }
 
   const skip = (parseInt(page) - 1) * parseInt(limit);

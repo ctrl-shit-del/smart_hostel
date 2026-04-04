@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Phone, Send, Users, Volume2 } from 'lucide-react';
+import { Loader2, Phone, Send, Search, Users, Volume2 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -119,6 +119,10 @@ export default function StudentsDesk() {
         <SummaryCard label="Awaiting Review" value={stats.awaitingReview} color="#f59e0b" />
         <SummaryCard label="Portal Calls Due" value={stats.callDue} color="#3b82f6" />
       </div>
+
+      <StudentDirectorySearch />
+
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginTop: 16 }}>Late Leave Returns</h2>
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
@@ -288,3 +292,189 @@ const panelStyle = {
   display: 'grid',
   gap: 10,
 };
+
+const FLAG_SEVERITY = {
+  suspicious_flag_count: { weight: 4, label: 'Suspicious AI', color: '#dc2626' },
+  outing_flag_count:     { weight: 3, label: 'Late Returns',  color: '#ef4444' },
+  community_strikes:     { weight: 2, label: 'Community',     color: '#f59e0b' },
+  dhobi_offence:         { weight: 1, label: 'Laundry',       color: '#6366f1' },
+};
+
+function getSeverityScore(student) {
+  return Object.entries(FLAG_SEVERITY).reduce((total, [key, { weight }]) => {
+    return total + (student[key] || 0) * weight;
+  }, 0);
+}
+
+function StudentDirectorySearch() {
+  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [flaggedStudents, setFlaggedStudents] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
+
+  useEffect(() => {
+    fetchFlagged();
+  }, []);
+
+  const fetchFlagged = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/users?flagged=true&limit=200');
+      setFlaggedStudents(res.users || []);
+    } catch (err) {
+      toast.error('Could not load flagged students.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sorted = useMemo(() => {
+    let list = [...flaggedStudents].sort((a, b) => getSeverityScore(b) - getSeverityScore(a));
+    if (filter.trim()) {
+      const q = filter.trim().toLowerCase();
+      list = list.filter(s =>
+        s.name?.toLowerCase().includes(q) ||
+        s.register_number?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [flaggedStudents, filter]);
+
+  return (
+    <div className="card" style={{ padding: 20, marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>🚩 Flagged Students</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            All students with active flags, sorted by severity score.
+          </p>
+        </div>
+        <span className="badge" style={{ background: sorted.length > 0 ? '#ef444433' : '#10b98133', color: sorted.length > 0 ? '#ef4444' : '#10b981', fontSize: '0.85rem', padding: '4px 12px' }}>
+          {sorted.length} flagged
+        </span>
+      </div>
+
+      {/* Severity legend */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        {Object.entries(FLAG_SEVERITY).map(([key, { weight, label, color }]) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+            {label} <span style={{ fontWeight: 700 }}>×{weight}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            className="input"
+            style={{ width: '100%', paddingLeft: 32, fontSize: '0.85rem' }}
+            placeholder="Filter by name or register number..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+          <Loader2 className="spin" size={20} />
+        </div>
+      ) : sorted.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          {filter.trim() ? 'No flagged students match that filter.' : 'No flagged students found. All clear!'}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {sorted.map(student => {
+            const score = getSeverityScore(student);
+            const isExpanded = expandedId === student._id;
+            return (
+              <div key={student._id} style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-elevated)', overflow: 'hidden', transition: 'all 0.2s' }}>
+                {/* Row */}
+                <div
+                  onClick={() => setExpandedId(isExpanded ? null : student._id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {/* Severity bar */}
+                  <div style={{
+                    width: 4, height: 36, borderRadius: 2,
+                    background: score >= 8 ? '#dc2626' : score >= 4 ? '#f59e0b' : '#6366f1',
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{student.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{student.register_number} • {student.block_name} • Room {student.room_no}</div>
+                  </div>
+                  {/* Flag pills */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {Object.entries(FLAG_SEVERITY).map(([key, { label, color }]) => {
+                      const c = student[key] || 0;
+                      if (c === 0) return null;
+                      return (
+                        <span key={key} style={{
+                          fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                          background: color + '22', color: color, whiteSpace: 'nowrap',
+                        }}>
+                          {label}: {c}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* Score */}
+                  <div style={{
+                    minWidth: 36, textAlign: 'center', fontSize: '1rem', fontWeight: 900,
+                    color: score >= 8 ? '#dc2626' : score >= 4 ? '#f59e0b' : '#6366f1',
+                  }}>
+                    {score}
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div style={{ padding: '0 14px 14px 14px', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+                      <FlagCard label="Late Returns & Timing" severity={3} count={student.outing_flag_count || 0} description="Outings past return time or missed entry scans." />
+                      <FlagCard label="Community Strikes" severity={2} count={student.community_strikes || 0} description="Toxic posts or inappropriate forum behavior." />
+                      <FlagCard label="Laundry Offenses" severity={1} count={student.dhobi_offence || 0} description="Laundry dropped outside scheduled hours." />
+                      <FlagCard label="Suspicious AI Flags" severity={4} count={student.suspicious_flag_count || 0} description="Gemini AI detections for outing misuse." />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      {student.is_flagged && (
+                        <span className="badge" style={{ background: '#f59e0b33', color: '#f59e0b' }}>Globally Flagged</span>
+                      )}
+                      {!student.is_active && (
+                        <span className="badge" style={{ background: '#ef444433', color: '#ef4444' }}>Credentials Locked</span>
+                      )}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                        Severity Score: <strong>{score}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FlagCard({ label, severity, count, description }) {
+  const isDanger = count > 0;
+  return (
+    <div style={{ padding: 12, borderRadius: 8, border: `1px solid ${isDanger ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`, background: isDanger ? 'rgba(239,68,68,0.05)' : 'var(--bg-surface)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: isDanger ? '#ef4444' : 'var(--text-muted)' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600 }}>×{severity}</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 900, color: isDanger ? '#ef4444' : 'var(--text-primary)' }}>{count}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.3 }}>{description}</div>
+    </div>
+  );
+}
