@@ -1,0 +1,58 @@
+const DEFAULT_NIGHT_MESS_ITEMS = [
+  {
+    name: 'Veg Sandwich',
+    description: 'Grilled vegetable sandwich with mint mayo.',
+    category: 'Snacks',
+    price: 70,
+    available_qty: 30,
+    prep_time_mins: 15,
+    is_available: true,
+  },
+  {
+    name: 'Chicken Roll',
+    description: 'Room-friendly wrap with chicken filling.',
+    category: 'Rolls',
+    price: 110,
+    available_qty: 24,
+    prep_time_mins: 18,
+    is_available: true,
+  },
+  {
+    name: 'Paneer Wrap',
+    description: 'Paneer tikka wrap with onion salad.',
+    category: 'Rolls',
+    price: 95,
+    available_qty: 24,
+    prep_time_mins: 18,
+    is_available: true,
+  },
+  {
+    name: 'Masala Maggi',
+    description: 'Classic late-night maggi with vegetables.',
+    category: 'Quick Bites',
+    price: 55,
+    available_qty: 40,
+    prep_time_mins: 10,
+    is_available: true,
+  },
+  {
+    name: 'Egg Fried Rice',
+    description: 'Single-portion egg fried rice bowl.',
+    category: 'Meals',
+    price: 120,
+    available_qty: 20,
+    prep_time_mins: 20,
+    is_available: true,
+  },
+  {
+    name: 'Cold Coffee',
+    description: 'Chilled coffee for late-night study sessions.',
+    category: 'Beverages',
+    price: 60,
+    available_qty: 35,
+    prep_time_mins: 5,
+    is_available: true,
+  },
+];
+
+module.exports = { DEFAULT_NIGHT_MESS_ITEMS };

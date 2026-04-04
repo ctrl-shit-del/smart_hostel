@@ -15,6 +15,7 @@ import ApplyGatepass from './pages/student/ApplyGatepass';
 import MyGatepass from './pages/student/MyGatepass';
 import MyAttendance from './pages/student/Attendance';
 import MessInfo from './pages/student/Mess';
+import NightMess from './pages/student/NightMess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
 import CommunityForum from './pages/student/Community';
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="gatepass" element={<MyGatepass />} />
           <Route path="attendance" element={<MyAttendance />} />
           <Route path="mess" element={<MessInfo />} />
+          <Route path="night-mess" element={<NightMess />} />
           <Route path="laundry" element={<LaundrySchedule />} />
           <Route path="guest" element={<GuestRequest />} />
           <Route path="community" element={<CommunityForum />} />

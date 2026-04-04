@@ -7,21 +7,40 @@ import toast from 'react-hot-toast';
 export default function StudentDashboard() {
   const { user } = useAuthStore();
   const [data, setData] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [votingId, setVotingId] = useState('');
 
   useEffect(() => {
     // We fetch current gatepass, complaints count, attendance stats
     Promise.all([
       api.get('/gatepass'),
       api.get('/complaints'),
-      api.get('/attendance')
-    ]).then(([gpRes, compRes, attRes]) => {
+      api.get('/attendance'),
+      api.get('/announcements')
+    ]).then(([gpRes, compRes, attRes, announcementRes]) => {
       setData({
         activeGp: gpRes.gatepasses?.find(g => g.status === 'Approved' || g.status === 'Active'),
         openComplaints: compRes.complaints?.filter(c => ['Open','Assigned','In Progress'].includes(c.status)).length || 0,
         attSummary: attRes.summary || {}
       });
+      setAnnouncements(announcementRes.announcements || []);
     }).catch(() => toast.error('Failed to load dashboard data'));
   }, []);
+
+  const handleVote = async (announcementId, optionLabel) => {
+    setVotingId(`${announcementId}:${optionLabel}`);
+    try {
+      const res = await api.post(`/announcements/${announcementId}/vote`, { optionLabel });
+      setAnnouncements((prev) => prev.map((announcement) => (
+        announcement._id === announcementId ? res.announcement : announcement
+      )));
+      toast.success('Vote submitted');
+    } catch {
+      toast.error('Failed to submit vote');
+    } finally {
+      setVotingId('');
+    }
+  };
 
   return (
     <div>
@@ -64,6 +83,63 @@ export default function StudentDashboard() {
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Report a room or facility issue</div>
           </div>
         </a>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 14 }}>Announcements & Polls</h2>
+        <div style={{ display: 'grid', gap: 14 }}>
+          {announcements.length === 0 && (
+            <div className="card" style={{ padding: 20, color: 'var(--text-muted)' }}>No active announcements right now.</div>
+          )}
+
+          {announcements.map((announcement) => (
+            <div key={announcement._id} className="card" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 style={{ fontWeight: 800 }}>{announcement.title}</h3>
+                    <span className={`badge ${announcement.priority === 'Critical' ? 'badge-danger' : announcement.priority === 'High' ? 'badge-warning' : 'badge-info'}`}>
+                      {announcement.priority}
+                    </span>
+                    <span className={`badge ${announcement.announcement_type === 'Poll' ? 'badge-brand' : 'badge-info'}`}>
+                      {announcement.announcement_type}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginTop: 8 }}>{announcement.content}</div>
+                </div>
+              </div>
+
+              {announcement.announcement_type === 'Poll' && announcement.poll && (
+                <div style={{ marginTop: 16, padding: 14, borderRadius: 14, background: 'rgba(15, 23, 42, 0.35)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontWeight: 700 }}>{announcement.poll.question}</div>
+                  <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                    {(announcement.poll.options || []).map((option) => {
+                      const totalVotes = announcement.poll.totalVotes || 0;
+                      const share = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                      return (
+                        <button
+                          key={option.label}
+                          className={`btn ${option.hasVoted ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ justifyContent: 'space-between' }}
+                          disabled={Boolean(votingId)}
+                          onClick={() => handleVote(announcement._id, option.label)}
+                        >
+                          <span>{option.label}</span>
+                          <span>{option.votes} votes · {share}%</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {announcement.poll.userVote && (
+                    <div style={{ fontSize: '0.8rem', color: '#93c5fd', marginTop: 12 }}>
+                      Your current choice: {announcement.poll.userVote}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
