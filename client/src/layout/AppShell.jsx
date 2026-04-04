@@ -8,6 +8,7 @@ import {
   UserCog, QrCode, Hash, Activity
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
+import PortalCallCenter from '../components/calls/PortalCallCenter.jsx';
 
 // ─── Role-based Theme ────────────────────────────────────────────────────────
 const ROLE_THEME = {
@@ -27,6 +28,12 @@ const ROLE_THEME = {
     accent: '#f59e0b',       // amber
     gradient: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
     glow: 'rgba(245,158,11,0.25)',
+    badge: 'SECURITY',
+  },
+  security: {
+    accent: '#f97316',
+    gradient: 'linear-gradient(135deg, #c2410c 0%, #fb923c 100%)',
+    glow: 'rgba(249,115,22,0.25)',
     badge: 'SECURITY',
   },
   dhobi: {
@@ -68,6 +75,8 @@ const adminNav = [
   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+  { divider: true, label: 'Services' },
+  { to: '/admin/students', icon: Users, label: 'Students' },
   { divider: true, label: 'Intelligence' },
   { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
 ];
@@ -76,11 +85,15 @@ const guardNav = [
   { to: '/guard/scan', icon: QrCode, label: 'Gate Scanner' },
 ];
 
+const securityNav = [
+  { to: '/security/scan', icon: QrCode, label: 'QR Scanner' },
+];
+
 const dhobiNav = [
   { to: '/dhobi/scan', icon: WashingMachine, label: 'Laundry Scanner' },
 ];
 
-const navByRole = { student: studentNav, admin: adminNav, guard: guardNav, dhobi: dhobiNav };
+const navByRole = { student: studentNav, admin: adminNav, guard: guardNav, security: securityNav, dhobi: dhobiNav };
 
 export default function AppShell({ role }) {
   const { user, logout } = useAuthStore();
@@ -90,7 +103,10 @@ export default function AppShell({ role }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  const navItems = navByRole[role] || studentNav;
+  const canSeeStudents = ['warden', 'hostel_admin'].includes(user?.role);
+  const navItems = role === 'admin'
+    ? adminNav.filter((item) => canSeeStudents || (item.to !== '/admin/students' && item.label !== 'Services'))
+    : navByRole[role] || studentNav;
   const unresolvedAlerts = alerts.length;
   const theme = ROLE_THEME[role] || ROLE_THEME.admin;
 
@@ -261,6 +277,8 @@ export default function AppShell({ role }) {
         {/* Page content */}
         <Outlet />
       </div>
+
+      <PortalCallCenter />
 
       {/* AI Chatbot — student only */}
       {role === 'student' && <ChatBot />}

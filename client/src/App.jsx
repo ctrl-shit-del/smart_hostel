@@ -18,7 +18,6 @@ import MessInfo from './pages/student/Mess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
 import CommunityForum from './pages/student/Community';
-import ChatbotWidget from './pages/student/ChatbotWidget';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import RoomAllocation from './pages/admin/RoomAllocation';
@@ -31,9 +30,11 @@ import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
 import HostelInfo from './pages/admin/HostelInfo';
+import StudentsDesk from './pages/admin/StudentsDesk';
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
+import SecurityScanner from './pages/security/SecurityScanner';
 
 import './index.css';
 
@@ -57,6 +58,7 @@ function RoleRouter() {
     return <Navigate to="/admin/dashboard" replace />;
   }
   if (role === 'guard') return <Navigate to="/guard/scan" replace />;
+  if (role === 'security_incharge') return <Navigate to="/security/scan" replace />;
   if (role === 'housekeeping') return <Navigate to="/dhobi/scan" replace />;
   return <Navigate to="/student/dashboard" replace />;
 }
@@ -106,12 +108,17 @@ export default function App() {
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="mess" element={<MessManagement />} />
+          <Route path="students" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentsDesk /></ProtectedRoute>} />
           <Route path="community" element={<CommunitySentiment />} />
         </Route>
 
         {/* Guard Routes */}
         <Route path="/guard" element={<ProtectedRoute allowedRoles={['guard']}><AppShell role="guard" /></ProtectedRoute>}>
           <Route path="scan" element={<GuardScanner />} />
+        </Route>
+
+        <Route path="/security" element={<ProtectedRoute allowedRoles={['security_incharge']}><AppShell role="security" /></ProtectedRoute>}>
+          <Route path="scan" element={<SecurityScanner />} />
         </Route>
 
         {/* Dhobi / Housekeeping Routes */}
@@ -121,7 +128,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {isAuthenticated && <ChatbotWidget />}
     </BrowserRouter>
   );
 }

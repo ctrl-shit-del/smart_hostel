@@ -7,11 +7,13 @@ import {
 } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     api.get('/analytics/overview')
@@ -75,6 +77,9 @@ export default function AdminDashboard() {
     { label: 'Hostel Info', icon: Building2, route: '/admin/hostel-info', desc: 'Floor plans & rooms' },
     { label: 'View Complaints', icon: MessageSquare, route: '/admin/complaints', desc: 'Active issues' },
     { label: 'Manage Gatepass', icon: DoorOpen, route: '/admin/gatepass', desc: 'Approve / reject' },
+    ...(['warden', 'hostel_admin'].includes(user?.role)
+      ? [{ label: 'Students', icon: Users, route: '/admin/students', desc: 'Late returns & portal calls' }]
+      : []),
     { label: 'Emergency Alerts', icon: AlertTriangle, route: '/admin/health', desc: 'Health events', danger: true },
   ];
 

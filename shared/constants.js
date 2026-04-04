@@ -6,6 +6,7 @@ const ROLES = {
   WARDEN: 'warden',
   FLOOR_ADMIN: 'floor_admin',
   GUARD: 'guard',
+  SECURITY_INCHARGE: 'security_incharge',
   HOSTEL_ADMIN: 'hostel_admin',
   MESS_INCHARGE: 'mess_incharge',
   HOUSEKEEPING: 'housekeeping',
@@ -55,6 +56,30 @@ const GATEPASS_STATUS = {
   RETURNED: 'Returned',    // after return scan
   EXPIRED: 'Expired',
   RECALLED: 'Recalled',
+};
+
+const LATE_RETURN_STATUS = {
+  NOT_APPLICABLE: 'not_applicable',
+  PENDING_STUDENT: 'pending_student',
+  SUBMITTED: 'submitted',
+  REVIEWED: 'reviewed',
+  EXPIRED: 'expired',
+};
+
+const LATE_RETURN_DECISION = {
+  PENDING: 'pending',
+  CLEAR: 'clear',
+  MEET_WARDEN: 'meet_warden',
+  CALL_STUDENT: 'call_student',
+};
+
+const LATE_RETURN_CALL_STATUS = {
+  NOT_REQUIRED: 'not_required',
+  PENDING: 'pending',
+  RINGING: 'ringing',
+  COMPLETED: 'completed',
+  NOT_PICKED: 'not_picked',
+  DECLINED: 'declined',
 };
 
 const ATTENDANCE_METHOD = {
@@ -146,6 +171,7 @@ const SOCKET_EVENTS = {
   GATEPASS_APPROVED: 'gatepass:approved',
   GATEPASS_REJECTED: 'gatepass:rejected',
   GATEPASS_OVERDUE: 'gatepass:overdue',
+  GATEPASS_LATE_RETURN_UPDATED: 'gatepass:late_return_updated',
   // Attendance
   ATTENDANCE_ANOMALY: 'attendance:anomaly',
   ATTENDANCE_UPDATED: 'attendance:updated',
@@ -166,6 +192,12 @@ const SOCKET_EVENTS = {
   // Community
   COMMUNITY_NEW_POST: 'community:new_post',
   COMMUNITY_POST_FLAGGED: 'community:post_flagged',
+  // Portal calling
+  PORTAL_CALL_INCOMING: 'portal_call:incoming',
+  PORTAL_CALL_ACCEPTED: 'portal_call:accepted',
+  PORTAL_CALL_DECLINED: 'portal_call:declined',
+  PORTAL_CALL_SIGNAL: 'portal_call:signal',
+  PORTAL_CALL_ENDED: 'portal_call:ended',
 };
 
 const LAUNDRY_STATUS = {
@@ -182,6 +214,9 @@ module.exports = {
   SLA_HOURS,
   GATEPASS_TYPES,
   GATEPASS_STATUS,
+  LATE_RETURN_STATUS,
+  LATE_RETURN_DECISION,
+  LATE_RETURN_CALL_STATUS,
   ATTENDANCE_METHOD,
   ATTENDANCE_STATUS,
   ROOM_TYPES,

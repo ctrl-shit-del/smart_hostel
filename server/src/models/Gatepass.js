@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
-const { GATEPASS_TYPES, GATEPASS_STATUS } = require('../../../shared/constants');
+const {
+  GATEPASS_TYPES,
+  GATEPASS_STATUS,
+  LATE_RETURN_STATUS,
+  LATE_RETURN_DECISION,
+  LATE_RETURN_CALL_STATUS,
+} = require('../../../shared/constants');
 
 const gatepassSchema = new mongoose.Schema({
   student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
@@ -29,6 +35,7 @@ const gatepassSchema = new mongoose.Schema({
 
   // QR Gate tracking
   qr_token: { type: String, unique: true, sparse: true },
+  qr_code_id: { type: String, unique: true, sparse: true },
   actual_exit: { type: Date },
   actual_return: { type: Date },
   exit_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
@@ -39,6 +46,41 @@ const gatepassSchema = new mongoose.Schema({
   overdue_alert_sent: { type: Boolean, default: false },
   late_return_count: { type: Number, default: 0 },
 
+  late_return: {
+    excuse_text: { type: String, trim: true },
+    excuse_submitted_at: { type: Date },
+    excuse_deadline_at: { type: Date },
+    excuse_status: {
+      type: String,
+      enum: Object.values(LATE_RETURN_STATUS),
+      default: LATE_RETURN_STATUS.NOT_APPLICABLE,
+    },
+    warden_decision: {
+      type: String,
+      enum: Object.values(LATE_RETURN_DECISION),
+      default: LATE_RETURN_DECISION.PENDING,
+    },
+    warden_message: { type: String, trim: true },
+    security_message: { type: String, trim: true },
+    reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+    reviewed_at: { type: Date },
+    follow_up_call_due_at: { type: Date },
+    call_status: {
+      type: String,
+      enum: Object.values(LATE_RETURN_CALL_STATUS),
+      default: LATE_RETURN_CALL_STATUS.NOT_REQUIRED,
+    },
+    call_attempted_at: { type: Date },
+    call_started_at: { type: Date },
+    call_ended_at: { type: Date },
+    call_session_id: { type: String, trim: true },
+    call_transcript: { type: String, trim: true },
+    call_summary: { type: String, trim: true },
+    call_language: { type: String, trim: true },
+    call_audio_mime_type: { type: String, trim: true },
+    call_not_picked_reason: { type: String, trim: true },
+  },
+
   applied_at: { type: Date, default: Date.now },
 }, { timestamps: true });
 
@@ -46,6 +88,7 @@ const gatepassSchema = new mongoose.Schema({
 gatepassSchema.index({ student_id: 1, applied_at: -1 });
 gatepassSchema.index({ status: 1 });
 gatepassSchema.index({ qr_token: 1 });
+gatepassSchema.index({ qr_code_id: 1 });
 gatepassSchema.index({ block_name: 1, status: 1 });
 gatepassSchema.index({ expected_return: 1, status: 1 }); // for overdue cron
 

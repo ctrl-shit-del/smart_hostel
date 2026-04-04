@@ -64,6 +64,7 @@ export default function LoginPage() {
       const role = res.user.role;
       if (role === 'student') navigate('/student/dashboard');
       else if (role === 'guard') navigate('/guard/scan');
+      else if (role === 'security_incharge') navigate('/security/scan');
       else if (role === 'housekeeping' || role === 'dhobi') navigate('/dhobi/scan');
       else navigate('/admin/dashboard');
     } catch (err) {

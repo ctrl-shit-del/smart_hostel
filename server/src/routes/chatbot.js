@@ -8,9 +8,17 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const Complaint = require('../models/Complaint');
 const Gatepass = require('../models/Gatepass');
 const Attendance = require('../models/Attendance');
+const {
+  GATEPASS_TYPES,
+  COMPLAINT_CATEGORIES,
+  COMPLAINT_SEVERITY,
+} = require('../../../shared/constants');
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'qwen/qwen3.6-plus:free';
+const VALID_GATEPASS_TYPES = new Set(Object.values(GATEPASS_TYPES));
+const VALID_COMPLAINT_CATEGORIES = new Set(Object.values(COMPLAINT_CATEGORIES));
+const VALID_COMPLAINT_SEVERITIES = new Set(Object.values(COMPLAINT_SEVERITY));
 
 let openRouterModulePromise;
 
@@ -42,6 +50,140 @@ function sanitizeActions(actions) {
       label: typeof action.label === 'string' ? action.label : 'Continue',
       value: typeof action.value === 'string' ? action.value : action.label || 'Continue',
     }));
+}
+
+function sanitizeText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeEnum(value, allowedValues) {
+  const cleaned = sanitizeText(value);
+  if (!cleaned) return null;
+
+  for (const entry of allowedValues) {
+    if (entry.toLowerCase() === cleaned.toLowerCase()) {
+      return entry;
+    }
+  }
+
+  for (const entry of allowedValues) {
+    if (cleaned.toLowerCase().includes(entry.toLowerCase())) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function normalizeIsoDate(value) {
+  const cleaned = sanitizeText(value);
+  if (!cleaned) return null;
+
+  const parsed = new Date(cleaned);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed.toISOString();
+}
+
+function normalizeSubmission(submission) {
+  if (!submission || typeof submission !== 'object' || Array.isArray(submission)) {
+    return undefined;
+  }
+
+  const kind = sanitizeText(submission.kind || submission.workflow).toLowerCase();
+  const payload = submission.payload && typeof submission.payload === 'object' && !Array.isArray(submission.payload)
+    ? submission.payload
+    : null;
+
+  if (!kind || !payload) return undefined;
+
+  if (kind === 'gatepass') {
+    const type = normalizeEnum(payload.type, VALID_GATEPASS_TYPES);
+    const destination = sanitizeText(payload.destination);
+    const reason = sanitizeText(payload.reason);
+    const expected_exit = normalizeIsoDate(payload.expected_exit || payload.expectedExit);
+    const expected_return = normalizeIsoDate(payload.expected_return || payload.expectedReturn);
+
+    if (!type || !destination || !reason || !expected_exit || !expected_return) {
+      return undefined;
+    }
+
+    const normalized = {
+      kind: 'gatepass',
+      payload: {
+        type,
+        destination,
+        reason,
+        expected_exit,
+        expected_return,
+      },
+    };
+
+    const guardian_name = sanitizeText(payload.guardian_name || payload.guardianName);
+    const guardian_phone = sanitizeText(payload.guardian_phone || payload.guardianPhone);
+    const guardian_relation = sanitizeText(payload.guardian_relation || payload.guardianRelation);
+
+    if (guardian_name) normalized.payload.guardian_name = guardian_name;
+    if (guardian_phone) normalized.payload.guardian_phone = guardian_phone;
+    if (guardian_relation) normalized.payload.guardian_relation = guardian_relation;
+
+    return normalized;
+  }
+
+  if (kind === 'complaint') {
+    const title = sanitizeText(payload.title);
+    const description = sanitizeText(payload.description);
+    const category = normalizeEnum(payload.category, VALID_COMPLAINT_CATEGORIES);
+    const severity = normalizeEnum(payload.severity, VALID_COMPLAINT_SEVERITIES);
+
+    if (!title || !description || !category || !severity) {
+      return undefined;
+    }
+
+    return {
+      kind: 'complaint',
+      payload: {
+        title,
+        description,
+        category,
+        severity,
+      },
+    };
+  }
+
+  return undefined;
+}
+
+function inferSubmissionFromPreview(preview) {
+  if (!preview || typeof preview !== 'object' || Array.isArray(preview)) {
+    return undefined;
+  }
+
+  const gatepassCandidate = normalizeSubmission({
+    kind: 'gatepass',
+    payload: {
+      type: preview.Type || preview.type,
+      destination: preview.Destination || preview.destination,
+      reason: preview.Reason || preview.reason,
+      expected_exit: preview.From || preview.from,
+      expected_return: preview.To || preview.to,
+      guardian_name: preview['Guardian Name'] || preview.guardian_name,
+      guardian_phone: preview['Guardian Phone'] || preview.guardian_phone,
+      guardian_relation: preview['Guardian Relation'] || preview.guardian_relation,
+    },
+  });
+
+  if (gatepassCandidate) return gatepassCandidate;
+
+  return normalizeSubmission({
+    kind: 'complaint',
+    payload: {
+      title: preview.Title || preview.title || preview.Issue || preview.issue,
+      description: preview.Description || preview.description || preview.Issue || preview.issue,
+      category: preview.Category || preview.category,
+      severity: preview.Severity || preview.severity,
+    },
+  });
 }
 
 function parseChatbotResponse(content) {
@@ -109,6 +251,21 @@ function parseChatbotResponse(content) {
     normalized.slots = parsed.slots;
   }
 
+  const submission = normalizeSubmission(parsed.submission) || inferSubmissionFromPreview(parsed.preview);
+  if (submission) {
+    normalized.submission = submission;
+
+    if (normalized.type === 'preview' && normalized.actions.length === 0) {
+      normalized.actions = [
+        {
+          label: submission.kind === 'complaint' ? 'Submit Complaint' : 'Submit Application',
+          value: 'confirm_submission',
+        },
+        { label: 'Cancel', value: 'cancel' },
+      ];
+    }
+  }
+
   return normalized;
 }
 
@@ -122,6 +279,7 @@ CRITICAL RULES FOR LEAVES/OUTINGS:
 If a user narrative violates these, politely reject them and specify the rule. Output as text.
 
 If the user gives enough info for a Leave/Outing (Type, Destination, Exit Time, Return Time, Reason) and it adheres entirely to the rules, you MUST output a "preview" type message!
+If the user gives enough info for a Complaint (Title/short issue summary, Description, Category, Severity), you MUST output a "preview" type message too.
 
 JSON OUTPUT FORMAT REQUIRED:
 IMPORTANT: You must always respond with valid JSON matching exactly this structure! Do not include markdown codeblocks around the JSON.
@@ -129,10 +287,28 @@ IMPORTANT: You must always respond with valid JSON matching exactly this structu
   "type": "text" | "preview" | "dashboard" | "laundry",
   "text": "Your conversational response",
   "preview": { "Type": "Outing or Leave", "Destination": "...", "From": "...", "To": "...", "Reason": "..." },
-  "actions": [ { "label": "Button Name", "value": "button_value" } ]
+  "actions": [ { "label": "Button Name", "value": "button_value" } ],
+  "submission": {
+    "kind": "gatepass" | "complaint",
+    "payload": {}
+  } | null
 }
 If asking for missing details, use type "text".
-If previewing application, use type "preview" and provide "Confirm" and "Cancel" buttons in actions.
+If previewing a leave or outing, use type "preview", provide "Confirm" and "Cancel" buttons in actions, and include a "submission" object with:
+- kind = "gatepass"
+- payload.type = one of "Outing", "Leave", "Hospital"
+- payload.destination = string
+- payload.reason = string
+- payload.expected_exit = ISO 8601 datetime string
+- payload.expected_return = ISO 8601 datetime string
+- optional guardian_name, guardian_phone, guardian_relation
+If previewing a complaint, use type "preview", provide "Submit Complaint" and "Cancel" buttons in actions, and include a "submission" object with:
+- kind = "complaint"
+- payload.title = concise string
+- payload.description = detailed complaint string
+- payload.category = one of ${Array.from(VALID_COMPLAINT_CATEGORIES).join(', ')}
+- payload.severity = one of ${Array.from(VALID_COMPLAINT_SEVERITIES).join(', ')}
+Never include a submission object unless all required fields are present and valid.
 Use the verified hostel context when it is available. If the data you need is missing, say so instead of inventing it.`;
 
   return [
@@ -214,6 +390,10 @@ async function requestGemini(messages) {
             slots: {
               type: 'array',
               items: { type: 'object', additionalProperties: true },
+            },
+            submission: {
+              type: ['object', 'null'],
+              additionalProperties: true,
             },
           },
           required: ['type', 'text', 'actions'],

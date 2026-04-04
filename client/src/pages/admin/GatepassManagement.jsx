@@ -36,6 +36,9 @@ export default function GatepassManagement() {
       <h1 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
         <DoorOpen size={24} /> Gatepass Approvals
       </h1>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 16 }}>
+        Late leave returns and portal call follow-ups now live under the Students section.
+      </p>
 
       {loading ? <Loader2 className="spin" /> : (
         <div style={{ display: 'grid', gap: 12 }}>

@@ -9,7 +9,7 @@ const { authenticate } = require('../middleware/auth');
 const ROLE_CATEGORIES = {
   student: ['student'],
   warden: ['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'faculty'],
-  service: ['guard', 'housekeeping', 'technician', 'dhobi'],
+  service: ['guard', 'security_incharge', 'housekeeping', 'technician', 'dhobi'],
 };
 
 router.post('/login', asyncHandler(async (req, res) => {
