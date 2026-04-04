@@ -12,6 +12,42 @@ const crypto = require('crypto');
 
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
+const compressRoomRanges = (roomNumbers = []) => {
+  const sorted = [...new Set(roomNumbers)].sort((a, b) => a - b);
+  if (sorted.length === 0) return [];
+
+  const ranges = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const current = sorted[i];
+    if (current === prev + 1) {
+      prev = current;
+      continue;
+    }
+    ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+    start = current;
+    prev = current;
+  }
+
+  ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+  return ranges;
+};
+
+const buildLaundryScheduleTable = (rooms = []) => {
+  const grouped = DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
+  rooms.forEach((room) => {
+    if (room.laundry_day) grouped[room.laundry_day].push(room.room_number);
+  });
+
+  return DAYS.map((day) => ({
+    day,
+    room_ranges: compressRoomRanges(grouped[day]),
+    total_rooms: grouped[day].length,
+  })).filter((entry) => entry.total_rooms > 0);
+};
+
 // GET /api/v1/laundry/status
 router.get('/status', authenticate, asyncHandler(async (req, res) => {
   if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Only students have laundry days' });
@@ -27,6 +63,14 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
     student_id: req.user._id, 
     status: { $in: [LAUNDRY_STATUS.PROCESSING, LAUNDRY_STATUS.READY] } 
   });
+
+  const rooms = await Room.find({
+    block_name: req.user.block_name || req.user.block,
+    is_active: { $ne: false },
+    laundry_day: { $exists: true, $ne: null },
+  }).select('room_number laundry_day').lean();
+
+  const schedule_table = buildLaundryScheduleTable(rooms);
   
   const blockLetter = (req.user.block_name || req.user.block || '').split(' ')[0];
   const qrToken = `${req.user.register_number}_${req.user.room_no}_${blockLetter}`;
@@ -37,7 +81,24 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
     is_laundry_day: isLaundryDay,
     current_day: todayName,
     active_session: activeSession,
-    qr_token: qrToken
+    qr_token: qrToken,
+    schedule_table,
+  });
+}));
+
+// GET /api/v1/laundry/schedule-table
+router.get('/schedule-table', authenticate, asyncHandler(async (req, res) => {
+  const blockName = req.query.block || req.user.block_name || req.user.block;
+  const rooms = await Room.find({
+    block_name: blockName,
+    is_active: { $ne: false },
+    laundry_day: { $exists: true, $ne: null },
+  }).select('room_number laundry_day').lean();
+
+  res.json({
+    success: true,
+    block: blockName,
+    schedule_table: buildLaundryScheduleTable(rooms),
   });
 }));
 

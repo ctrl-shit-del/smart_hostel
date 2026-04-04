@@ -17,6 +17,10 @@ const attendanceSchema = new mongoose.Schema({
   wifi_detected_at: { type: Date },
   device_mac: { type: String },
 
+  // Face detection
+  face_detected_at: { type: Date },
+  client_ip: { type: String },
+
   // QR fallback
   qr_scanned_at: { type: Date },
   qr_code_id: { type: String },

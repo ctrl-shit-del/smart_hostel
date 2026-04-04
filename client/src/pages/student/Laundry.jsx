@@ -119,6 +119,51 @@ export default function LaundrySchedule() {
           </div>
         )
       )}
+
+      <div className="glass-card" style={{ padding: 24, marginTop: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 800 }}>Laundry Schedule Table</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: 4 }}>
+              Day-wise laundry schedule with room number ranges for your block.
+            </p>
+          </div>
+          <span className="badge badge-info">{data?.current_day}</span>
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Day</th>
+                <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Room Range</th>
+                <th style={{ textAlign: 'left', padding: '12px 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rooms</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.schedule_table || []).map((entry) => {
+                const isMyDay = entry.day === data?.laundry_day;
+                return (
+                  <tr key={entry.day} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <td style={{ padding: '12px 10px', fontWeight: 700 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{entry.day}</span>
+                        {isMyDay && <span className="badge badge-brand">Your day</span>}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 10px', color: 'var(--text-secondary)' }}>
+                      {entry.room_ranges.join(', ')}
+                    </td>
+                    <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>
+                      {entry.total_rooms}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
