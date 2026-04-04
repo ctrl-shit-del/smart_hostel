@@ -103,7 +103,6 @@ async function getUserModState(userId) {
 async function addStrikeToUser(userId) {
   let user = await Student.findById(userId).select('community_strikes community_banned');
   if (!user) user = await Staff.findById(userId).select('community_strikes community_banned');
-  
   if (!user) return { strikes: 0, banned: false };
 
   user.community_strikes = Math.min((user.community_strikes || 0) + 1, 3);
@@ -286,7 +285,6 @@ router.post('/admin/:id/remove', authenticate, isFloorAdmin, asyncHandler(async 
 router.post('/admin/:userId/unban', authenticate, isFloorAdmin, asyncHandler(async (req, res) => {
   let user = await Student.findById(req.params.userId).select('name community_strikes community_banned');
   if (!user) user = await Staff.findById(req.params.userId).select('name community_strikes community_banned');
-  
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
   user.community_banned = false;

@@ -5,10 +5,11 @@ import {
   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
-  UserCog, QrCode, Hash, Activity, MoonStar
+  UserCog, QrCode, Hash, Activity, MoonStar, SunMedium
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 import PortalCallCenter from '../components/calls/PortalCallCenter.jsx';
+import { useThemeStore } from '../store/authStore';
 
 // ─── Role-based Theme ────────────────────────────────────────────────────────
 const ROLE_THEME = {
@@ -19,9 +20,9 @@ const ROLE_THEME = {
     badge: 'STUDENT',
   },
   admin: {
-    accent: '#8b5cf6',       // violet
-    gradient: 'linear-gradient(135deg, #5b21b6 0%, #8b5cf6 100%)',
-    glow: 'rgba(139,92,246,0.25)',
+    accent: '#2455A3',
+    gradient: 'linear-gradient(135deg, #163b75 0%, #2455A3 55%, #3497DB 100%)',
+    glow: 'rgba(36,85,163,0.25)',
     badge: 'STAFF',
   },
   proctor: {
@@ -74,6 +75,7 @@ const adminNav = [
   { divider: true, label: 'Core Modules' },
   { to: '/admin/hostel-info', icon: Building2, label: 'Hostel Info' },
   { to: '/admin/rooms', icon: Building2, label: 'Room Allocation' },
+  { to: '/admin/student-records', icon: Users, label: 'Student Records' },
   { to: '/admin/complaints', icon: MessageSquare, label: 'Complaints' },
   { to: '/admin/gatepass', icon: DoorOpen, label: 'Gatepass' },
   { to: '/admin/attendance', icon: ClipboardCheck, label: 'Attendance' },
@@ -82,8 +84,6 @@ const adminNav = [
   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-  { divider: true, label: 'Services' },
-  { to: '/admin/students', icon: Users, label: 'Students' },
   { divider: true, label: 'Intelligence' },
   { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
 ];
@@ -110,18 +110,20 @@ const navByRole = { student: studentNav, admin: adminNav, proctor: proctorNav, g
 
 export default function AppShell({ role }) {
   const { user, logout } = useAuthStore();
+  const themeMode = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const alerts = useAlertStore((s) => s.alerts);
   const removeAlert = useAlertStore((s) => s.removeAlert);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  const canSeeStudents = ['warden', 'hostel_admin'].includes(user?.role);
+  const canSeeStudentRecords = ['warden', 'hostel_admin'].includes(user?.role);
   const navItems = role === 'admin'
-    ? adminNav.filter((item) => canSeeStudents || (item.to !== '/admin/students' && item.label !== 'Services'))
+    ? adminNav.filter((item) => canSeeStudentRecords || item.to !== '/admin/student-records')
     : navByRole[role] || studentNav;
   const unresolvedAlerts = alerts.length;
-  const theme = ROLE_THEME[role] || ROLE_THEME.admin;
+  const roleTheme = ROLE_THEME[role] || ROLE_THEME.admin;
 
   const handleLogout = () => {
     logout();
@@ -137,9 +139,9 @@ export default function AppShell({ role }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
-              background: theme.gradient,
+              background: roleTheme.gradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 0 16px ${theme.glow}`,
+              boxShadow: `0 0 16px ${roleTheme.glow}`,
             }}>
               <Shield size={18} color="white" />
             </div>
@@ -154,9 +156,9 @@ export default function AppShell({ role }) {
         <div style={{
           margin: '12px',
           padding: '10px 12px',
-          background: `${theme.accent}11`,
+          background: `${roleTheme.accent}11`,
           borderRadius: 'var(--radius-md)',
-          border: `1px solid ${theme.accent}33`,
+          border: `1px solid ${roleTheme.accent}33`,
         }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.name}
@@ -165,13 +167,13 @@ export default function AppShell({ role }) {
             fontSize: '0.68rem', marginTop: 4,
             display: 'inline-block',
             padding: '2px 8px',
-            background: `${theme.accent}22`,
-            color: theme.accent,
+            background: `${roleTheme.accent}22`,
+            color: roleTheme.accent,
             borderRadius: 20,
             fontWeight: 700,
             letterSpacing: '0.07em',
           }}>
-            {theme.badge} {user?.block_name ? `· ${user.block_name}` : ''}
+            {roleTheme.badge} {user?.block_name ? `· ${user.block_name}` : ''}
           </div>
         </div>
 
@@ -188,7 +190,7 @@ export default function AppShell({ role }) {
                 to={item.to}
                 className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 onClick={() => setSidebarOpen(false)}
-                style={({ isActive }) => isActive ? { '--nav-active-color': theme.accent } : {}}
+                style={({ isActive }) => isActive ? { '--nav-active-color': roleTheme.accent } : {}}
               >
                 <Icon size={16} />
                 {item.label}
@@ -229,14 +231,17 @@ export default function AppShell({ role }) {
             {/* Role indicator chip */}
             <div style={{
               padding: '4px 12px', borderRadius: 20,
-              background: `${theme.accent}18`,
-              border: `1px solid ${theme.accent}44`,
-              color: theme.accent,
+              background: `${roleTheme.accent}18`,
+              border: `1px solid ${roleTheme.accent}44`,
+              color: roleTheme.accent,
               fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em',
             }}>
-              {theme.badge}
+              {roleTheme.badge}
             </div>
 
+            <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {themeMode === 'dark' ? <SunMedium size={18} /> : <MoonStar size={18} />}
+            </button>
             {/* Alert bell */}
             <div style={{ position: 'relative' }}>
               <button className="btn btn-ghost btn-icon" onClick={() => setAlertsOpen(!alertsOpen)}>
@@ -277,10 +282,10 @@ export default function AppShell({ role }) {
 
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: theme.gradient,
+              background: roleTheme.gradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.8rem', fontWeight: 700, color: 'white',
-              boxShadow: `0 0 10px ${theme.glow}`,
+              boxShadow: `0 0 10px ${roleTheme.glow}`,
             }}>
               {user?.name?.charAt(0).toUpperCase()}
             </div>

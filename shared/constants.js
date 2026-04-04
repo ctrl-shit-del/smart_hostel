@@ -88,6 +88,7 @@ const ATTENDANCE_METHOD = {
   WIFI: 'wifi',
   QR: 'qr',
   MANUAL: 'manual',
+  FACE: 'face',
 };
 
 const ATTENDANCE_STATUS = {
@@ -177,6 +178,7 @@ const SOCKET_EVENTS = {
   // Attendance
   ATTENDANCE_ANOMALY: 'attendance:anomaly',
   ATTENDANCE_UPDATED: 'attendance:updated',
+  ATTENDANCE_WINDOW_TOGGLED: 'attendance:window_toggled',
   // Health
   HEALTH_SOS: 'health:sos',
   HEALTH_RESOLVED: 'health:resolved',

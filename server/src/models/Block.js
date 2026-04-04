@@ -11,6 +11,10 @@ const blockSchema = new mongoose.Schema({
   facilities: [{ type: String }],
   mess_caterers: [{ type: String }],
   warden_in_charge: { type: String },
+  wifi_ip: { type: String },                          // block's expected WiFi IP (for reference / future enforcement)
+  attendance_window_open: { type: Boolean, default: false },
+  attendance_window_opened_at: { type: Date },
+  attendance_window_closed_at: { type: Date },
   is_active: { type: Boolean, default: true },
   created_at: { type: Date, default: Date.now },
 }, { timestamps: true });

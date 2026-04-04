@@ -16,6 +16,11 @@ const announcementSchema = new mongoose.Schema({
       voters: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }],
     }],
   },
+  category: { 
+    type: String, 
+    enum: ['General', 'Academic', 'Sports', 'Activity', 'Spotlight', 'Mess'], 
+    default: 'General' 
+  },
   created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   expires_at: { type: Date },
   is_active: { type: Boolean, default: true },

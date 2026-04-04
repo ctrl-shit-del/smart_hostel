@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore, useThemeStore } from './store/authStore';
 import { useSocket } from './hooks/useSocket';
 
 // Pages
@@ -19,6 +19,7 @@ import NightMess from './pages/student/NightMess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
 import CommunityForum from './pages/student/Community';
+import ChatbotWidget from './pages/student/ChatbotWidget';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import RoomAllocation from './pages/admin/RoomAllocation';
@@ -31,7 +32,7 @@ import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
 import HostelInfo from './pages/admin/HostelInfo';
-import StudentsDesk from './pages/admin/StudentsDesk';
+import StudentRecords from './pages/admin/StudentRecords';
 import ProctorDashboard from './pages/proctor/Dashboard';
 
 import GuardScanner from './pages/guard/GuardScanner';
@@ -43,6 +44,16 @@ import './index.css';
 // Socket connection (once, at root)
 function SocketInit() {
   useSocket();
+  return null;
+}
+
+function ThemeInit() {
+  const theme = useThemeStore((state) => state.theme);
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   return null;
 }
 
@@ -73,6 +84,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ThemeInit />
       {isAuthenticated && <SocketInit />}
       <Toaster
         position="top-right"
@@ -107,6 +119,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="hostel-info" element={<HostelInfo />} />
           <Route path="rooms" element={<RoomAllocation />} />
+          <Route path="student-records" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentRecords /></ProtectedRoute>} />
           <Route path="complaints" element={<ComplaintDashboard />} />
           <Route path="attendance" element={<AttendanceView />} />
           <Route path="gatepass" element={<GatepassManagement />} />
@@ -114,7 +127,6 @@ export default function App() {
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="mess" element={<MessManagement />} />
-          <Route path="students" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden']}><StudentsDesk /></ProtectedRoute>} />
           <Route path="community" element={<CommunitySentiment />} />
         </Route>
 
@@ -139,6 +151,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {isAuthenticated && <ChatbotWidget />}
     </BrowserRouter>
   );
 }

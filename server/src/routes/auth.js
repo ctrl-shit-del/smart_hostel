@@ -15,7 +15,6 @@ const ROLE_CATEGORIES = {
   proctor: ['proctor', 'hostel_admin'],
   service: ['guard', 'security_incharge', 'housekeeping', 'technician', 'dhobi'],
 };
-
 router.post('/login', asyncHandler(async (req, res) => {
   const { register_number, email, password, username, loginCategory } = req.body;
 
@@ -131,6 +130,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   }
 
   const isMatch = await user.comparePassword(password);
+  
   if (!isMatch) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }

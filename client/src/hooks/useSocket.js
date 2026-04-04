@@ -14,8 +14,10 @@ export const useSocket = () => {
     if (!isAuthenticated || !token) return;
 
     socket = io('/', {
+      path: '/socket.io',
       auth: { token },
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
+      reconnection: true,
     });
 
     socket.on('connect', () => console.log('Socket connected'));
@@ -76,12 +78,14 @@ export const useSocket = () => {
 };
 
 export const useSocketEvent = (event, callback) => {
-  useEffect(() => {
-    if (!socket) return undefined;
+  const socket = useSocket();
 
+  useEffect(() => {
+    if (!socket) return;
+    
     socket.on(event, callback);
     return () => {
-      socket?.off(event, callback);
+      socket.off(event, callback);
     };
-  }, [event, callback]);
+  }, [socket, event, callback]);
 };

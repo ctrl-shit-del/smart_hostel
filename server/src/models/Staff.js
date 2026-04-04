@@ -3,11 +3,10 @@ const bcrypt = require('bcryptjs');
 
 const staffSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  username: { type: String, unique: true, sparse: true, trim: true },
+  username: { type: String, unique: true, required: true, trim: true },
   email: { type: String, lowercase: true, trim: true },
-  password: { type: String },
-  role: { type: String },
-
+  password: { type: String, required: true },
+  role: { type: String, required: true },
   contactInfo: {
     phone: { type: String, trim: true },
     email: { type: String, trim: true },
@@ -23,7 +22,6 @@ const staffSchema = new mongoose.Schema({
   shift_end: { type: String },
   assignedHostels: [{ type: String }],
   assigned_hostels: [{ type: String }],
-  isCampusWide: { type: Boolean, default: false },
   is_campus_wide: { type: Boolean, default: false },
   gender: { type: String },
   profile_photo: { type: String },
@@ -35,10 +33,6 @@ const staffSchema = new mongoose.Schema({
   strict: false,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
-});
-
-staffSchema.virtual('assigned_hostels_list').get(function() {
-  return this.assignedHostels || this.assigned_hostels || [];
 });
 
 const ROLE_MAP = {
@@ -61,6 +55,9 @@ const ROLE_MAP = {
   faculty: 'floor_admin',
 };
 
+staffSchema.virtual('assigned_hostels_list').get(function() {
+  return this.assignedHostels || this.assigned_hostels || [];
+});
 staffSchema.virtual('effectiveRole').get(function () {
   if (this.sys_role) return this.sys_role.toLowerCase();
   if (this.role) return ROLE_MAP[this.role.toLowerCase()] || 'housekeeping';
@@ -73,7 +70,7 @@ staffSchema.pre('save', async function () {
     this.password = await bcrypt.hash(this.password, 12);
   }
 });
-
+// Compare password
 staffSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   if (this.password === candidatePassword) return true;
