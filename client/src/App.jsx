@@ -30,6 +30,7 @@ import StaffDirectory from './pages/admin/StaffDirectory';
 import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
 import CommunitySentiment from './pages/admin/CommunitySentiment';
+import HostelInfo from './pages/admin/HostelInfo';
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
@@ -96,6 +97,7 @@ export default function App() {
         {/* Admin/Warden/Staff Routes */}
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'housekeeping', 'technician']}><AppShell role="admin" /></ProtectedRoute>}>
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="hostel-info" element={<HostelInfo />} />
           <Route path="rooms" element={<RoomAllocation />} />
           <Route path="complaints" element={<ComplaintDashboard />} />
           <Route path="attendance" element={<AttendanceView />} />

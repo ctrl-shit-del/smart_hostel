@@ -6,65 +6,112 @@ const { generateToken } = require('../utils/jwt');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate } = require('../middleware/auth');
 
-// POST /api/v1/auth/login
+const ROLE_CATEGORIES = {
+  student: ['student'],
+  warden: ['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'faculty'],
+  service: ['guard', 'housekeeping', 'technician', 'dhobi'],
+};
+
 router.post('/login', asyncHandler(async (req, res) => {
-  const { register_number, username, email, password } = req.body;
+  const { register_number, email, password, username, loginCategory } = req.body;
 
   if (!password) {
     return res.status(400).json({ success: false, message: 'Password is required' });
   }
 
+  const identifier = register_number || email || username;
+
+  if (!identifier) {
+    return res.status(400).json({ success: false, message: 'Please provide your ID or email.' });
+  }
+
   let user = null;
   let isStaff = false;
 
-  if (register_number) {
-    user = await Student.findOne({ register_number: register_number.toUpperCase() });
-  } else if (username) {
-    user = await Staff.findOne({ username });
-    isStaff = !!user;
-  } else if (email) {
-    // Try both, usually staff uses email or username
-    user = await Staff.findOne({ 
+  if (loginCategory === 'student') {
+    user = await Student.findOne({
       $or: [
-        { email: email.toLowerCase() },
-        { 'contactInfo.email': email.toLowerCase() }
-      ] 
+        { register_number: identifier.toUpperCase() },
+        { email: identifier.toLowerCase() }
+      ]
+    });
+    if (user && user.role !== 'student') {
+      return res.status(403).json({ success: false, message: 'This account is not a student account. Please use the correct login card.' });
+    }
+  } else if (loginCategory === 'warden') {
+    user = await Staff.findOne({
+      $or: [
+        { username: new RegExp(`^${identifier}$`, 'i') },
+        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+      ]
     });
     if (user) {
       isStaff = true;
     } else {
-      user = await Student.findOne({ email: email.toLowerCase() });
+      user = await Student.findOne({
+        $or: [
+          { register_number: identifier.toUpperCase() },
+          { email: identifier.toLowerCase() }
+        ]
+      });
+      if (user && !ROLE_CATEGORIES.warden.includes(user.role)) {
+        return res.status(403).json({ success: false, message: 'This account is not a warden/faculty account. Please use the correct login card.' });
+      }
+    }
+  } else if (loginCategory === 'service') {
+    user = await Staff.findOne({
+      $or: [
+        { username: new RegExp(`^${identifier}$`, 'i') },
+        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+      ]
+    });
+    if (user) {
+      isStaff = true;
+      if (!ROLE_CATEGORIES.service.includes(user.effectiveRole)) {
+        return res.status(403).json({ success: false, message: 'This account is not a service provider account. Please use the correct login card.' });
+      }
+    }
+  } else {
+    const studentQuery = {
+      $or: [
+        { register_number: identifier.toUpperCase() },
+        { email: identifier.toLowerCase() }
+      ]
+    };
+    user = await Student.findOne(studentQuery);
+    if (!user) {
+      user = await Staff.findOne({
+        $or: [
+          { username: new RegExp(`^${identifier}$`, 'i') },
+          { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+        ]
+      });
+      isStaff = !!user;
     }
   }
+
   if (!user) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 
   const isMatch = await user.comparePassword(password);
-  
   if (!isMatch) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 
-  // Update last login if applicable
   if (!isStaff) {
     user.last_login = new Date();
     await user.save({ validateBeforeSave: false });
   }
 
-  // Normalize role for frontend
-  const tokenPayload = { 
-    _id: user._id, 
-    role: isStaff ? (user.sys_role || user.role) : user.role 
-  };
+  const resolvedRole = isStaff ? user.effectiveRole : (user.role || 'student');
+  const tokenPayload = { _id: user._id, role: resolvedRole };
   const token = generateToken(tokenPayload);
 
   const userObj = user.toJSON({ virtuals: true });
   delete userObj.password;
   delete userObj.face_embeddings;
-  if (isStaff) {
-    userObj.role = user.sys_role || user.role; // map standard role for frontend routing
-  }
+  userObj.role = resolvedRole;
 
   res.json({
     success: true,
@@ -74,7 +121,6 @@ router.post('/login', asyncHandler(async (req, res) => {
   });
 }));
 
-// POST /api/v1/auth/register
 router.post('/register', asyncHandler(async (req, res) => {
   const { name, register_number, email, username, password, role, block_name, floor_no, room_no, bed_id, gender, phone, department, academic_year } = req.body;
 
@@ -127,15 +173,23 @@ router.post('/register', asyncHandler(async (req, res) => {
   });
 }));
 
-// GET /api/v1/auth/me
 router.get('/me', authenticate, asyncHandler(async (req, res) => {
-  // req.user is already fetched in authenticate middleware
-  res.json({ success: true, user: req.user });
+  let user = await Student.findById(req.user._id).select('-password -face_embeddings');
+  let isStaff = false;
+  if (!user) {
+    user = await Staff.findById(req.user._id).select('-password');
+    isStaff = !!user;
+  }
+
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+  const userObj = user.toJSON({ virtuals: true });
+  if (isStaff) userObj.role = user.effectiveRole;
+
+  res.json({ success: true, user: userObj });
 }));
 
-// POST /api/v1/auth/logout
 router.post('/logout', authenticate, asyncHandler(async (_req, res) => {
-  // JWT is stateless — client clears the token
   res.json({ success: true, message: 'Logged out successfully' });
 }));
 

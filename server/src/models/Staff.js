@@ -8,34 +8,28 @@ const staffSchema = new mongoose.Schema({
   password: { type: String },
   role: { type: String },
 
-  // Contact
   contactInfo: {
     phone: { type: String, trim: true },
     email: { type: String, trim: true },
   },
-  phone: { type: String, trim: true }, // For fallback/compatibility
-
-  // Staff-specific
+  phone: { type: String, trim: true },
   staff_role: { type: String },
   shiftTimings: {
     start: { type: String },
     end: { type: String },
   },
   isCampuswide: { type: Boolean, default: false },
-  shift_start: { type: String }, // For fallback
-  shift_end: { type: String }, // For fallback
+  shift_start: { type: String },
+  shift_end: { type: String },
   assignedHostels: [{ type: String }],
-  assigned_hostels: [{ type: String }], // For fallback
+  assigned_hostels: [{ type: String }],
   isCampusWide: { type: Boolean, default: false },
-  is_campus_wide: { type: Boolean, default: false }, // For fallback
-
+  is_campus_wide: { type: Boolean, default: false },
   gender: { type: String },
   profile_photo: { type: String },
-
-  // Flags
   is_active: { type: Boolean, default: true },
   last_login: { type: Date },
-  sys_role: { type: String, default: 'housekeeping' }
+  sys_role: { type: String, default: undefined }
 }, {
   timestamps: true,
   strict: false,
@@ -43,12 +37,32 @@ const staffSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Virtuals for compatibility with existing code
 staffSchema.virtual('assigned_hostels_list').get(function() {
   return this.assignedHostels || this.assigned_hostels || [];
 });
 
-// Hash password before save
+const ROLE_MAP = {
+  warden: 'warden',
+  guard: 'guard',
+  security: 'guard',
+  housekeeping: 'housekeeping',
+  dhobi: 'housekeeping',
+  laundry: 'housekeeping',
+  technician: 'technician',
+  'hostel admin': 'hostel_admin',
+  admin: 'hostel_admin',
+  'floor admin': 'floor_admin',
+  'mess incharge': 'mess_incharge',
+  'mess in-charge': 'mess_incharge',
+  faculty: 'floor_admin',
+};
+
+staffSchema.virtual('effectiveRole').get(function () {
+  if (this.sys_role) return this.sys_role.toLowerCase();
+  if (this.role) return ROLE_MAP[this.role.toLowerCase()] || 'housekeeping';
+  return 'housekeeping';
+});
+
 staffSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
@@ -56,7 +70,6 @@ staffSchema.pre('save', async function () {
   }
 });
 
-// Compare password
 staffSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   if (this.password === candidatePassword) return true;
@@ -69,4 +82,5 @@ staffSchema.methods.comparePassword = async function (candidatePassword) {
 
 staffSchema.index({ username: 1 });
 staffSchema.index({ email: 1 });
+
 module.exports = mongoose.model('Staff', staffSchema, 'staff');

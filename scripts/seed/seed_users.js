@@ -16,6 +16,23 @@ const DB_NAME = 'hostel_db';
 
 const DEMO_STAFF = [
   {
+    name: 'Mr. Senthil Kumar',
+    register_number: '107725',
+    username: '107725',
+    email: 'senthil.kumar@vitfaculty.ac.in',
+    role: 'warden',
+    password: 'Warden@123',
+    block_name: 'A Block',
+    gender: 'Male',
+    staff_role: 'Warden',
+    shift_start: '10:00',
+    shift_end: '18:00',
+    contactInfo: {
+      phone: '+91-9876543013',
+      email: 'senthil.kumar@vitfaculty.ac.in'
+    }
+  },
+  {
     name: 'Dr. Raghav Sharma',
     register_number: 'ADMIN01',
     email: 'admin@smarthostel.in',
@@ -38,39 +55,6 @@ const DEMO_STAFF = [
     staff_role: 'Chief Warden',
     shift_start: '08:00',
     shift_end: '20:00',
-  },
-  {
-    name: 'Suresh Kumar',
-    register_number: 'GUARD01',
-    email: 'guard@smarthostel.in',
-    role: 'guard',
-    password: 'Guard@123',
-    block_name: 'A Block',
-    gender: 'Male',
-    staff_role: 'Security Guard',
-    shift_start: '06:00',
-    shift_end: '18:00',
-  },
-  {
-    name: 'Anitha Devi',
-    register_number: 'FLOOR01',
-    email: 'flooradmin@smarthostel.in',
-    role: 'floor_admin',
-    password: 'Floor@123',
-    block_name: 'A Block',
-    floor_no: 1,
-    gender: 'Female',
-    staff_role: 'Floor Admin',
-  },
-  {
-    name: 'Ravi Shankar',
-    register_number: 'MESS01',
-    email: 'mess@smarthostel.in',
-    role: 'mess_incharge',
-    password: 'Mess@123',
-    block_name: 'A Block',
-    gender: 'Male',
-    staff_role: 'Mess In-charge',
   },
 ];
 

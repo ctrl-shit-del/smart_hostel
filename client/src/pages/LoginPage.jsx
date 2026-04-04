@@ -1,34 +1,70 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { GraduationCap, Shield, Wrench, Eye, EyeOff, Loader2, ChevronLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
-// Using live database accounts only
+const ROLE_CARDS = [
+  {
+    id: 'student',
+    label: 'Student Login',
+    subtitle: 'Hostel residents & scholars',
+    icon: GraduationCap,
+    placeholder: 'Register Number (e.g. 23BCE1753)',
+    idLabel: 'Register Number',
+    accent: '#06b6d4',    // cyan for students
+    glow: 'rgba(6,182,212,0.2)',
+  },
+  {
+    id: 'warden',
+    label: 'Warden / Faculty',
+    subtitle: 'Hostel administration & staff',
+    icon: Shield,
+    placeholder: 'Staff ID or Email',
+    idLabel: 'Staff ID / Email',
+    accent: '#8b5cf6',    // violet for staff
+    glow: 'rgba(139,92,246,0.2)',
+  },
+  {
+    id: 'service',
+    label: 'Service Providers',
+    subtitle: 'Guard, Housekeeping & Others',
+    icon: Wrench,
+    placeholder: 'Service ID',
+    idLabel: 'Service Provider ID',
+    accent: '#f59e0b',    // amber for service
+    glow: 'rgba(245,158,11,0.2)',
+  },
+];
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const [form, setForm] = useState({ register_number: '', password: '' });
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [form, setForm] = useState({ identifier: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.register_number || !form.password) {
+    if (!form.identifier || !form.password) {
       toast.error('Please fill in all fields');
       return;
     }
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', form);
+      const res = await api.post('/auth/login', {
+        register_number: form.identifier,
+        password: form.password,
+        loginCategory: selectedRole.id,
+      });
       login(res.user, res.token);
-      toast.success(`Welcome back, ${res.user.name}!`);
-      // Route based on role
+      toast.success(`Welcome, ${res.user.name}!`);
       const role = res.user.role;
       if (role === 'student') navigate('/student/dashboard');
       else if (role === 'guard') navigate('/guard/scan');
+      else if (role === 'housekeeping' || role === 'dhobi') navigate('/dhobi/scan');
       else navigate('/admin/dashboard');
     } catch (err) {
       toast.error(err.message || 'Invalid credentials');
@@ -37,125 +73,264 @@ export default function LoginPage() {
     }
   };
 
-  // User will supply data from DB via form inputs
+  const handleBack = () => {
+    setSelectedRole(null);
+    setForm({ identifier: '', password: '' });
+  };
+
+  const accent = selectedRole?.accent || '#6366f1';
+  const glow = selectedRole?.glow || 'rgba(99,102,241,0.15)';
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: 'var(--bg-base)',
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* Background glow */}
+      {/* Ambient glow — changes color based on role */}
       <div style={{
-        position: 'absolute', top: '20%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 600, height: 600,
-        background: 'radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%)',
+        position: 'absolute', top: '30%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: 700, height: 700,
+        background: `radial-gradient(ellipse, ${glow} 0%, transparent 65%)`,
         pointerEvents: 'none',
+        transition: 'background 0.6s ease',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '-10%', right: '20%',
+        width: 400, height: 400,
+        background: `radial-gradient(ellipse, ${glow} 0%, transparent 65%)`,
+        pointerEvents: 'none',
+        transition: 'background 0.6s ease',
       }} />
 
-      {/* Left panel */}
       <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px',
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(6,182,212,0.04) 100%)',
-        borderRight: '1px solid var(--border)',
+        maxWidth: 520,
+        width: '100%',
+        padding: '0 24px',
+        position: 'relative',
+        zIndex: 1,
       }}>
-        <div style={{ maxWidth: 500, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, background: 'var(--grad-brand)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: 'var(--shadow-brand)',
-            }}>
-              <Shield size={24} color="white" />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>SmartHostel AI</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>VIT Chennai | Solve-A-Thon 2026</div>
-            </div>
+        {/* Logo / Branding */}
+        <div style={{ textAlign: 'center', marginBottom: selectedRole ? 28 : 44 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 18,
+            background: selectedRole
+              ? `linear-gradient(135deg, ${accent}cc 0%, ${accent} 100%)`
+              : 'var(--grad-brand)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 0 40px ${glow}`,
+            marginBottom: 16,
+            transition: 'all 0.5s ease',
+          }}>
+            <Shield size={30} color="white" />
           </div>
-
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: 12, lineHeight: 1.1 }}>
-            Intelligent Hostel<br />
-            <span style={{ background: 'var(--grad-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              Operations Platform
-            </span>
+          <h1 style={{
+            fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em',
+            color: 'var(--text-primary)', marginBottom: 4,
+          }}>
+            VHOSTELCC
           </h1>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 40, fontSize: '1rem', lineHeight: 1.7 }}>
-            Automate operations, predict issues, improve student safety — for 8,000 students across 4 hostels.
+          <p style={{
+            color: 'var(--text-muted)', fontSize: '0.9rem',
+            letterSpacing: '0.04em',
+          }}>
+            Smart Hostel Operations System
           </p>
-
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            {[
-              { val: '8,000+', label: 'Students' },
-              { val: '4', label: 'Hostels' },
-              { val: '15', label: 'Modules' },
-            ].map((s) => (
-              <div key={s.label} style={{ padding: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, background: 'var(--grad-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.val}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
-      </div>
 
-      {/* Right panel — Login form */}
-      <div style={{
-        width: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px',
-        flexShrink: 0,
-      }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>Welcome back</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 28 }}>Sign in to your hostel portal</p>
+        {/* Role Cards */}
+        {!selectedRole && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 12,
+            animation: 'fadeInUp 0.35s ease both',
+          }}>
+            {ROLE_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.id}
+                  onClick={() => setSelectedRole(card)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 16, textAlign: 'left',
+                    padding: '18px 20px',
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-lg)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = card.accent;
+                    e.currentTarget.style.boxShadow = `0 0 20px ${card.glow}`;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${card.accent}33 0%, ${card.accent}22 100%)`,
+                    border: `1px solid ${card.accent}44`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: card.accent,
+                  }}>
+                    <Icon size={22} />
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                      {card.label}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {card.subtitle}
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '1.2rem' }}>›</div>
+                </div>
+              );
+            })}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label">Register Number / ID</label>
-              <input
-                className="input"
-                placeholder="e.g. 23BCE1753"
-                value={form.register_number}
-                onChange={(e) => setForm({ ...form, register_number: e.target.value.toUpperCase() })}
-              />
+            <p style={{
+              textAlign: 'center', fontSize: '0.7rem',
+              color: 'var(--text-muted)', marginTop: 20,
+              letterSpacing: '0.04em',
+            }}>
+              VHOSTELCC · PS-002 · Solve-A-Thon 2026
+            </p>
+          </div>
+        )}
+
+        {/* Login Form */}
+        {selectedRole && (
+          <div style={{ animation: 'fadeInUp 0.3s ease both' }}>
+            {/* Back button */}
+            <button
+              onClick={handleBack}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'none', border: 'none', color: 'var(--text-muted)',
+                cursor: 'pointer', fontSize: '0.85rem', marginBottom: 20,
+                padding: 0, transition: 'color 200ms ease',
+              }}
+              onMouseEnter={e => e.target.style.color = 'var(--text-primary)'}
+              onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+            >
+              <ChevronLeft size={16} /> Back to role selection
+            </button>
+
+            {/* Role banner */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 18px',
+              background: `${selectedRole.accent}11`,
+              border: `1px solid ${selectedRole.accent}33`,
+              borderRadius: 'var(--radius-md)',
+              marginBottom: 24,
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                background: `linear-gradient(135deg, ${selectedRole.accent}44 0%, ${selectedRole.accent}22 100%)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: selectedRole.accent,
+              }}>
+                <selectedRole.icon size={20} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  {selectedRole.label}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {selectedRole.subtitle}
+                </div>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div style={{ position: 'relative' }}>
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">{selectedRole.idLabel}</label>
                 <input
                   className="input"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  style={{ paddingRight: 44 }}
+                  placeholder={selectedRole.placeholder}
+                  value={form.identifier}
+                  onChange={(e) => setForm({
+                    ...form,
+                    identifier: selectedRole.id === 'student'
+                      ? e.target.value.toUpperCase()
+                      : e.target.value
+                  })}
+                  autoFocus
+                  style={{ '--input-focus-color': selectedRole.accent }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
-            </div>
 
-            <button className="btn btn-primary btn-lg" type="submit" disabled={loading} style={{ marginTop: 4 }}>
-              {loading ? <><Loader2 size={18} className="spin" style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</> : 'Sign In →'}
-            </button>
-          </form>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="input"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    style={{ paddingRight: 44 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
-          {/* No demo accounts, real credentials only */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: 8, width: '100%',
+                  padding: '14px 24px',
+                  background: `linear-gradient(135deg, ${selectedRole.accent} 0%, ${selectedRole.accent}cc 100%)`,
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: `0 4px 24px ${selectedRole.glow}`,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {loading ? (
+                  <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Signing in...</>
+                ) : (
+                  `Sign In to ${selectedRole.label} →`
+                )}
+              </button>
+            </form>
 
-          <p style={{ marginTop: 24, textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            SmartHostel AI · PS-002 · Solve-A-Thon 2026
-          </p>
-        </div>
+            <p style={{
+              marginTop: 24, textAlign: 'center', fontSize: '0.7rem',
+              color: 'var(--text-muted)', letterSpacing: '0.04em',
+            }}>
+              VHOSTELCC · PS-002 · Solve-A-Thon 2026
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

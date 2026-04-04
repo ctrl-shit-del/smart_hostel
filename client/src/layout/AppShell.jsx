@@ -9,7 +9,35 @@ import {
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 
+// ─── Role-based Theme ────────────────────────────────────────────────────────
+const ROLE_THEME = {
+  student: {
+    accent: '#06b6d4',       // cyan
+    gradient: 'linear-gradient(135deg, #0e7490 0%, #06b6d4 100%)',
+    glow: 'rgba(6,182,212,0.25)',
+    badge: 'STUDENT',
+  },
+  admin: {
+    accent: '#8b5cf6',       // violet
+    gradient: 'linear-gradient(135deg, #5b21b6 0%, #8b5cf6 100%)',
+    glow: 'rgba(139,92,246,0.25)',
+    badge: 'STAFF',
+  },
+  guard: {
+    accent: '#f59e0b',       // amber
+    gradient: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
+    glow: 'rgba(245,158,11,0.25)',
+    badge: 'SECURITY',
+  },
+  dhobi: {
+    accent: '#10b981',       // emerald
+    gradient: 'linear-gradient(135deg, #047857 0%, #10b981 100%)',
+    glow: 'rgba(16,185,129,0.25)',
+    badge: 'SERVICE',
+  },
+};
 
+// ─── Nav Items ────────────────────────────────────────────────────────────────
 const studentNav = [
   { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/student/profile', icon: User, label: 'My Profile' },
@@ -30,6 +58,7 @@ const studentNav = [
 const adminNav = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { divider: true, label: 'Core Modules' },
+  { to: '/admin/hostel-info', icon: Building2, label: 'Hostel Info' },
   { to: '/admin/rooms', icon: Building2, label: 'Room Allocation' },
   { to: '/admin/complaints', icon: MessageSquare, label: 'Complaints' },
   { to: '/admin/gatepass', icon: DoorOpen, label: 'Gatepass' },
@@ -63,6 +92,7 @@ export default function AppShell({ role }) {
 
   const navItems = navByRole[role] || studentNav;
   const unresolvedAlerts = alerts.length;
+  const theme = ROLE_THEME[role] || ROLE_THEME.admin;
 
   const handleLogout = () => {
     logout();
@@ -78,23 +108,41 @@ export default function AppShell({ role }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
-              background: 'var(--grad-brand)',
+              background: theme.gradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: `0 0 16px ${theme.glow}`,
             }}>
               <Shield size={18} color="white" />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.1 }}>SmartHostel</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AI Platform</div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.1 }}>VHOSTELCC</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Smart Operations</div>
             </div>
           </div>
         </div>
 
         {/* User pill */}
-        <div style={{ margin: '12px', padding: '10px 12px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {user?.role?.replace('_', ' ').toUpperCase()} {user?.block_name ? `· ${user.block_name}` : ''}
+        <div style={{
+          margin: '12px',
+          padding: '10px 12px',
+          background: `${theme.accent}11`,
+          borderRadius: 'var(--radius-md)',
+          border: `1px solid ${theme.accent}33`,
+        }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.name}
+          </div>
+          <div style={{
+            fontSize: '0.68rem', marginTop: 4,
+            display: 'inline-block',
+            padding: '2px 8px',
+            background: `${theme.accent}22`,
+            color: theme.accent,
+            borderRadius: 20,
+            fontWeight: 700,
+            letterSpacing: '0.07em',
+          }}>
+            {theme.badge} {user?.block_name ? `· ${user.block_name}` : ''}
           </div>
         </div>
 
@@ -111,6 +159,7 @@ export default function AppShell({ role }) {
                 to={item.to}
                 className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 onClick={() => setSidebarOpen(false)}
+                style={({ isActive }) => isActive ? { '--nav-active-color': theme.accent } : {}}
               >
                 <Icon size={16} />
                 {item.label}
@@ -121,7 +170,11 @@ export default function AppShell({ role }) {
 
         {/* Logout */}
         <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
-          <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', gap: 10 }} onClick={handleLogout}>
+          <button
+            className="btn btn-ghost"
+            style={{ width: '100%', justifyContent: 'flex-start', gap: 10 }}
+            onClick={handleLogout}
+          >
             <LogOut size={16} />
             Sign Out
           </button>
@@ -144,6 +197,17 @@ export default function AppShell({ role }) {
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Role indicator chip */}
+            <div style={{
+              padding: '4px 12px', borderRadius: 20,
+              background: `${theme.accent}18`,
+              border: `1px solid ${theme.accent}44`,
+              color: theme.accent,
+              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em',
+            }}>
+              {theme.badge}
+            </div>
+
             {/* Alert bell */}
             <div style={{ position: 'relative' }}>
               <button className="btn btn-ghost btn-icon" onClick={() => setAlertsOpen(!alertsOpen)}>
@@ -182,7 +246,13 @@ export default function AppShell({ role }) {
               )}
             </div>
 
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--grad-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'white' }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: theme.gradient,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.8rem', fontWeight: 700, color: 'white',
+              boxShadow: `0 0 10px ${theme.glow}`,
+            }}>
               {user?.name?.charAt(0).toUpperCase()}
             </div>
           </div>
