@@ -123,7 +123,7 @@ export default function AppShell({ role }) {
     ? adminNav.filter((item) => canSeeStudentRecords || item.to !== '/admin/student-records')
     : navByRole[role] || studentNav;
   const unresolvedAlerts = alerts.length;
-  const theme = ROLE_THEME[role] || ROLE_THEME.admin;
+  const roleTheme = ROLE_THEME[role] || ROLE_THEME.admin;
 
   const handleLogout = () => {
     logout();
@@ -139,9 +139,9 @@ export default function AppShell({ role }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10,
-              background: theme.gradient,
+              background: roleTheme.gradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 0 16px ${theme.glow}`,
+              boxShadow: `0 0 16px ${roleTheme.glow}`,
             }}>
               <Shield size={18} color="white" />
             </div>
@@ -156,9 +156,9 @@ export default function AppShell({ role }) {
         <div style={{
           margin: '12px',
           padding: '10px 12px',
-          background: `${theme.accent}11`,
+          background: `${roleTheme.accent}11`,
           borderRadius: 'var(--radius-md)',
-          border: `1px solid ${theme.accent}33`,
+          border: `1px solid ${roleTheme.accent}33`,
         }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.name}
@@ -167,13 +167,13 @@ export default function AppShell({ role }) {
             fontSize: '0.68rem', marginTop: 4,
             display: 'inline-block',
             padding: '2px 8px',
-            background: `${theme.accent}22`,
-            color: theme.accent,
+            background: `${roleTheme.accent}22`,
+            color: roleTheme.accent,
             borderRadius: 20,
             fontWeight: 700,
             letterSpacing: '0.07em',
           }}>
-            {theme.badge} {user?.block_name ? `· ${user.block_name}` : ''}
+            {roleTheme.badge} {user?.block_name ? `· ${user.block_name}` : ''}
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export default function AppShell({ role }) {
                 to={item.to}
                 className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 onClick={() => setSidebarOpen(false)}
-                style={({ isActive }) => isActive ? { '--nav-active-color': theme.accent } : {}}
+                style={({ isActive }) => isActive ? { '--nav-active-color': roleTheme.accent } : {}}
               >
                 <Icon size={16} />
                 {item.label}
@@ -231,15 +231,14 @@ export default function AppShell({ role }) {
             {/* Role indicator chip */}
             <div style={{
               padding: '4px 12px', borderRadius: 20,
-              background: `${theme.accent}18`,
-              border: `1px solid ${theme.accent}44`,
-              color: theme.accent,
+              background: `${roleTheme.accent}18`,
+              border: `1px solid ${roleTheme.accent}44`,
+              color: roleTheme.accent,
               fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em',
             }}>
-              {theme.badge}
+              {roleTheme.badge}
             </div>
 
-            <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {themeMode === 'dark' ? <SunMedium size={18} /> : <MoonStar size={18} />}
             </button>
@@ -283,10 +282,10 @@ export default function AppShell({ role }) {
 
             <div style={{
               width: 32, height: 32, borderRadius: '50%',
-              background: theme.gradient,
+              background: roleTheme.gradient,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.8rem', fontWeight: 700, color: 'white',
-              boxShadow: `0 0 10px ${theme.glow}`,
+              boxShadow: `0 0 10px ${roleTheme.glow}`,
             }}>
               {user?.name?.charAt(0).toUpperCase()}
             </div>
