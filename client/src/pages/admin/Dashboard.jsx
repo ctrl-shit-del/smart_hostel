@@ -78,7 +78,7 @@ export default function AdminDashboard() {
     { label: 'View Complaints', icon: MessageSquare, route: '/admin/complaints', desc: 'Active issues' },
     { label: 'Manage Gatepass', icon: DoorOpen, route: '/admin/gatepass', desc: 'Approve / reject' },
     ...(['warden', 'hostel_admin'].includes(user?.role)
-      ? [{ label: 'Students', icon: Users, route: '/admin/students', desc: 'Late returns & portal calls' }]
+      ? [{ label: 'Student Records', icon: Users, route: '/admin/student-records', desc: 'Behavior, risks & actions' }]
       : []),
     { label: 'Emergency Alerts', icon: AlertTriangle, route: '/admin/health', desc: 'Health events', danger: true },
   ];

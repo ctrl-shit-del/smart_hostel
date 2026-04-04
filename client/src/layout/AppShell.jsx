@@ -240,9 +240,9 @@ export default function AppShell({ role }) {
             </div>
 
             <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {themeMode === 'dark' ? <SunMedium size={18} /> : <MoonStar size={18} />}
             </button>
-
             {/* Alert bell */}
             <div style={{ position: 'relative' }}>
               <button className="btn btn-ghost btn-icon" onClick={() => setAlertsOpen(!alertsOpen)}>

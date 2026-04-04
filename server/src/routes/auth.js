@@ -12,7 +12,6 @@ const ROLE_CATEGORIES = {
   proctor: ['proctor', 'hostel_admin'],
   service: ['guard', 'security_incharge', 'housekeeping', 'technician', 'dhobi'],
 };
-
 router.post('/login', asyncHandler(async (req, res) => {
   const { register_number, email, password, username, loginCategory } = req.body;
 
@@ -96,12 +95,12 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
   } else {
-    // Default fallback lookup
     user = await Student.findOne({
       $or: [
         { register_number: identifier.toUpperCase() },
         { email: identifier.toLowerCase() }
       ]
+    });
     });
     if (!user) {
       user = await Staff.findOne({

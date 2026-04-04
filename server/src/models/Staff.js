@@ -55,25 +55,21 @@ const ROLE_MAP = {
   faculty: 'floor_admin',
 };
 
-// Virtuals for compatibility with existing code
 staffSchema.virtual('assigned_hostels_list').get(function() {
   return this.assignedHostels || this.assigned_hostels || [];
 });
-
 staffSchema.virtual('effectiveRole').get(function () {
   if (this.sys_role) return this.sys_role.toLowerCase();
   if (this.role) return ROLE_MAP[this.role.toLowerCase()] || 'housekeeping';
   return 'housekeeping';
 });
 
-// Hash password before save
 staffSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
     this.password = await bcrypt.hash(this.password, 12);
   }
 });
-
 // Compare password
 staffSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
