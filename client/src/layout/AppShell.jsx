@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
-  UserCog, QrCode, Hash, Activity
+  UserCog, QrCode, Hash, Activity, MoonStar
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 import PortalCallCenter from '../components/calls/PortalCallCenter.jsx';
@@ -62,6 +62,7 @@ const studentNav = [
   { to: '/student/attendance', icon: ClipboardCheck, label: 'Attendance' },
   { divider: true, label: 'Hostel Info' },
   { to: '/student/mess', icon: UtensilsCrossed, label: 'Mess Menu' },
+  { to: '/student/night-mess', icon: MoonStar, label: 'Night Mess' },
   { to: '/student/laundry', icon: WashingMachine, label: 'Laundry' },
   { to: '/student/guest', icon: Users, label: 'Guest Request' },
   { divider: true, label: 'Social' },
