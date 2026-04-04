@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { COMPLAINT_CATEGORIES, COMPLAINT_STATUS, COMPLAINT_SEVERITY, SLA_HOURS } = require('../../../shared/constants');
 
 const complaintSchema = new mongoose.Schema({
-  raised_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  raised_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   student_name: { type: String },
   register_number: { type: String },
   block_name: { type: String },
@@ -23,7 +23,7 @@ const complaintSchema = new mongoose.Schema({
 
   // Routing & assignment
   status: { type: String, enum: Object.values(COMPLAINT_STATUS), default: COMPLAINT_STATUS.OPEN },
-  assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assigned_to: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   assigned_at: { type: Date },
   assigned_role: { type: String },
 

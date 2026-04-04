@@ -1,0 +1,20 @@
+{
+  "_id": "69cfc1fb5edefb52784590f1",
+  "name": "Dr. Karthikeyan Murugesan",
+  "contactInfo": {
+    "phone": "+91-9876543003",
+    "email": "karthikeyan.m@vitfaculty.ac.in"
+  },
+  "role": "Deputy Warden",
+  "assignedHostels": [
+    "A Block"
+  ],
+  "shiftTimings": {
+    "start": "13:00",
+    "end": "21:00"
+  },
+  "isCampusWide": false,
+  "gender": "Male",
+  "password": "$2b$12$HIizFnK7ybTFT6hleu6P1ORgZRu7lTTFOJ8zsJoRB7gTsZN32NQRC",
+  "username": "998627"
+}

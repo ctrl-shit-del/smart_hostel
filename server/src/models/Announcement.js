@@ -6,7 +6,7 @@ const announcementSchema = new mongoose.Schema({
   priority: { type: String, enum: ['Low', 'Medium', 'High', 'Critical'], default: 'Medium' },
   target_roles: [{ type: String }],     // [] = all
   target_blocks: [{ type: String }],    // [] = all blocks
-  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   expires_at: { type: Date },
   is_active: { type: Boolean, default: true },
 }, { timestamps: true });

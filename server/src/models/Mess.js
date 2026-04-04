@@ -8,11 +8,11 @@ const messMenuSchema = new mongoose.Schema({
   type: { type: String, enum: ['Veg', 'Non-Veg', 'Special', 'Both'] },
   caterer: { type: String },
   items: [{ name: String, calories: Number }],
-  updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
 }, { timestamps: true });
 
 const nightOrderSchema = new mongoose.Schema({
-  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   block_name: { type: String },
   room_no: { type: Number },
   items: [{ name: String, qty: Number, price: Number }],

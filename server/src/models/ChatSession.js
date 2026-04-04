@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const chatMessageSchema = new mongoose.Schema({
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   role: { type: String, enum: ['user', 'bot'], required: true },
   content: { type: String, required: true, maxlength: 2000 },
   intent: { type: String }, // detected intent: mess_menu, laundry, gatepass, complaint, room, policy, greeting, etc.

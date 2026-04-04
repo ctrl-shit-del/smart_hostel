@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { ATTENDANCE_METHOD, ATTENDANCE_STATUS } = require('../../../shared/constants');
 
 const attendanceSchema = new mongoose.Schema({
-  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   student_name: { type: String },
   register_number: { type: String },
   block_name: { type: String },
@@ -26,7 +26,7 @@ const attendanceSchema = new mongoose.Schema({
   },
 
   // Manual override
-  manual_marked_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  manual_marked_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   manual_reason: { type: String },
 
   // Cross-check with gatepass

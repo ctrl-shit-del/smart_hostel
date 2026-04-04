@@ -1,22 +1,16 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { ROLES } = require('../../../shared/constants');
 
-const userSchema = new mongoose.Schema({
+const studentSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
-  register_number: { type: String, unique: true, sparse: true, trim: true, uppercase: true },
-  email: { type: String, sparse: true, lowercase: true, trim: true },
+  register_number: { type: String, unique: true, required: true, trim: true, uppercase: true },
+  email: { type: String, lowercase: true, trim: true },
   password: { type: String, required: true },
-
-  role: {
-    type: String,
-    enum: Object.values(ROLES),
-    default: ROLES.STUDENT,
-  },
+  role: { type: String, default: 'student' },
 
   // Hostel placement
   block_name: { type: String, trim: true },
-  floor: { type: String }, // DB uses "Floor 1"
+  floor: { type: String }, 
   room_no: { type: Number },
   bed_type: { type: String },
   bed: { type: String }, 
@@ -27,7 +21,7 @@ const userSchema = new mongoose.Schema({
   department: { type: String, trim: true },
   academic_year: { type: Number },
   profile_photo: { type: String },
-  mess: { type: String }, // DB uses "mess"
+  mess: { type: String }, 
 
   // Parent / Emergency
   parent_name: { type: String },
@@ -39,13 +33,6 @@ const userSchema = new mongoose.Schema({
   face_embeddings: [{ type: Number }],
   dhobi_offence: { type: Number, default: 0 },
 
-  // Staff-specific
-  staff_role: { type: String },
-  shift_start: { type: String },
-  shift_end: { type: String },
-  assigned_hostels: [{ type: String }],
-  is_campus_wide: { type: Boolean, default: false },
-
   // Community moderation
   community_strikes: { type: Number, default: 0, min: 0, max: 3 },
   community_banned: { type: Boolean, default: false },
@@ -53,37 +40,43 @@ const userSchema = new mongoose.Schema({
   // Flags
   is_active: { type: Boolean, default: true },
   is_flagged: { type: Boolean, default: false },
+  is_campus_wide: { type: Boolean, default: false },
 
   created_at: { type: Date, default: Date.now },
   last_login: { type: Date },
 }, { 
   timestamps: true,
-  strict: false, // Let any other fields the user provided pass through
+  strict: false,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
 // Virtuals for compatibility with client
-userSchema.virtual('floor_no').get(function() {
+studentSchema.virtual('floor_no').get(function() {
   if (typeof this.floor === 'string') {
     return parseInt(this.floor.replace(/\D/g, '')) || this.floor;
   }
   return this.floor;
 });
 
-userSchema.virtual('bed_id').get(function() {
+studentSchema.virtual('bed_id').get(function() {
   if (typeof this.bed === 'string') {
-    return this.bed.split(' ').pop(); // e.g. "Bed C" -> "C"
+    return this.bed.split(' ').pop();
   }
   return this.bed;
 });
 
-userSchema.virtual('mess_information').get(function() {
+studentSchema.virtual('mess_information').get(function() {
   return this.mess;
 });
 
-// Hash password before save (only if not already hashed and modified)
-userSchema.pre('save', async function () {
+studentSchema.virtual('hostel_address').get(function () {
+  if (!this.block_name || !this.floor || !this.room_no) return null;
+  return `${this.block_name}, Floor ${this.floor}, Room ${this.room_no}`;
+});
+
+// Hash password before save
+studentSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
     this.password = await bcrypt.hash(this.password, 12);
@@ -91,9 +84,8 @@ userSchema.pre('save', async function () {
 });
 
 // Compare password
-userSchema.methods.comparePassword = async function (candidatePassword) {
+studentSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
-  // Match plaintext first (since user database has plaintext passwords)
   if (this.password === candidatePassword) return true;
   try {
     return await bcrypt.compare(candidatePassword, this.password);
@@ -102,13 +94,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   }
 };
 
-// Virtual: full hostel address
-userSchema.virtual('hostel_address').get(function () {
-  if (!this.block_name || !this.floor || !this.room_no) return null;
-  return `${this.block_name}, Floor ${this.floor}, Room ${this.room_no}`;
-});
+studentSchema.index({ register_number: 1 });
 
-// Indexes
-userSchema.index({ register_number: 1 });
-
-module.exports = mongoose.model('User', userSchema, 'users');
+module.exports = mongoose.model('Student', studentSchema, 'students');

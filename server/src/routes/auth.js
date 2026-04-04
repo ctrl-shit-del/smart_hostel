@@ -1,40 +1,47 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const Student = require('../models/Student');
+const Staff = require('../models/Staff');
 const { generateToken } = require('../utils/jwt');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate } = require('../middleware/auth');
 
 // POST /api/v1/auth/login
 router.post('/login', asyncHandler(async (req, res) => {
-  const { register_number, email, password, username, role } = req.body;
+  const { register_number, username, email, password } = req.body;
 
   if (!password) {
     return res.status(400).json({ success: false, message: 'Password is required' });
   }
 
-  // 1. Try to find as a Student / User
-  const query = register_number
-    ? { register_number: register_number.toUpperCase() }
-    : { email: email?.toLowerCase() };
-
-  let user = await User.findOne(query);
+  let user = null;
   let isStaff = false;
 
-  // 2. Fallback to Staff collection via username if not found
-  if (!user && (username || register_number)) {
-    const Staff = require('../models/Staff');
-    const u = username || register_number;
-    const staffQuery = { username: new RegExp(`^${u}$`, 'i') };
-    user = await Staff.findOne(staffQuery);
+  if (register_number) {
+    user = await Student.findOne({ register_number: register_number.toUpperCase() });
+  } else if (username) {
+    user = await Staff.findOne({ username });
     isStaff = !!user;
+  } else if (email) {
+    // Try both, usually staff uses email or username
+    user = await Staff.findOne({ 
+      $or: [
+        { email: email.toLowerCase() },
+        { 'contactInfo.email': email.toLowerCase() }
+      ] 
+    });
+    if (user) {
+      isStaff = true;
+    } else {
+      user = await Student.findOne({ email: email.toLowerCase() });
+    }
   }
-
   if (!user) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 
   const isMatch = await user.comparePassword(password);
+  
   if (!isMatch) {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
@@ -48,7 +55,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   // Normalize role for frontend
   const tokenPayload = { 
     _id: user._id, 
-    role: isStaff ? user.sys_role : user.role 
+    role: isStaff ? (user.sys_role || user.role) : user.role 
   };
   const token = generateToken(tokenPayload);
 
@@ -56,7 +63,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   delete userObj.password;
   delete userObj.face_embeddings;
   if (isStaff) {
-    userObj.role = user.sys_role; // map standard role for frontend routing
+    userObj.role = user.sys_role || user.role; // map standard role for frontend routing
   }
 
   res.json({
@@ -69,27 +76,47 @@ router.post('/login', asyncHandler(async (req, res) => {
 
 // POST /api/v1/auth/register
 router.post('/register', asyncHandler(async (req, res) => {
-  const { name, register_number, email, password, role, block_name, floor_no, room_no, bed_id, gender, phone, department, academic_year } = req.body;
+  const { name, register_number, email, username, password, role, block_name, floor_no, room_no, bed_id, gender, phone, department, academic_year } = req.body;
 
   if (!name || !password) {
     return res.status(400).json({ success: false, message: 'Name and password are required' });
   }
 
-  const existingUser = await User.findOne({
-    $or: [
-      register_number ? { register_number: register_number.toUpperCase() } : null,
-      email ? { email: email.toLowerCase() } : null,
-    ].filter(Boolean),
-  });
+  const isStudent = !role || role === 'student';
+  let existingUser;
+
+  if (isStudent) {
+    existingUser = await Student.findOne({
+      $or: [
+        { register_number: register_number?.toUpperCase() },
+        { email: email?.toLowerCase() },
+      ].filter(v => v.register_number || v.email),
+    });
+  } else {
+    existingUser = await Staff.findOne({
+      $or: [
+        { username: username },
+        { email: email?.toLowerCase() },
+      ].filter(v => v.username || v.email),
+    });
+  }
 
   if (existingUser) {
     return res.status(409).json({ success: false, message: 'User already exists' });
   }
 
-  const user = await User.create({
-    name, register_number, email, password, role: role || 'student',
-    block_name, floor_no, room_no, bed_id, gender, phone, department, academic_year,
-  });
+  let user;
+  if (isStudent) {
+    user = await Student.create({
+      name, register_number, email, password, role: 'student',
+      block_name, floor_no, room_no, bed_id, gender, phone, department, academic_year,
+    });
+  } else {
+    user = await Staff.create({
+      name, username: username || email, email, password, role,
+      gender, phone,
+    });
+  }
 
   const token = generateToken(user);
   res.status(201).json({
@@ -102,20 +129,8 @@ router.post('/register', asyncHandler(async (req, res) => {
 
 // GET /api/v1/auth/me
 router.get('/me', authenticate, asyncHandler(async (req, res) => {
-  let user = await User.findById(req.user._id).select('-password -face_embeddings');
-  let isStaff = false;
-  if (!user) {
-    const Staff = require('../models/Staff');
-    user = await Staff.findById(req.user._id).select('-password');
-    isStaff = !!user;
-  }
-  
-  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-  const userObj = user.toJSON();
-  if (isStaff) userObj.role = user.sys_role;
-
-  res.json({ success: true, user: userObj });
+  // req.user is already fetched in authenticate middleware
+  res.json({ success: true, user: req.user });
 }));
 
 // POST /api/v1/auth/logout

@@ -51,8 +51,8 @@ router.post('/apply', authenticate, asyncHandler(async (req, res) => {
   let studentUser = req.user;
   if (register_number && register_number !== req.user.register_number) {
     // If an admin or chatbot provides a register_number, verify it exists
-    const User = require('../models/User');
-    const override = await User.findOne({ register_number: register_number.toUpperCase() });
+    const Student = require('../models/Student');
+    const override = await Student.findOne({ register_number: register_number.toUpperCase() });
     if (!override) return res.status(404).json({ success: false, message: 'Student register number not found' });
     studentUser = override;
   }

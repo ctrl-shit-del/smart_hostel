@@ -5,7 +5,8 @@ const Gatepass = require('../models/Gatepass');
 const Attendance = require('../models/Attendance');
 const Room = require('../models/Room');
 const HealthEvent = require('../models/HealthEvent');
-const User = require('../models/User');
+const Student = require('../models/Student');
+const Staff = require('../models/Staff');
 const { authenticate } = require('../middleware/auth');
 const { isFloorAdmin, isWarden } = require('../middleware/rbac');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -22,7 +23,7 @@ router.get('/overview', authenticate, isFloorAdmin, asyncHandler(async (req, res
     totalStudents, activeComplaints, pendingGatepasses, activeGatepasses,
     todayAttendance, openEmergencies, vacantRooms, occupiedRooms,
   ] = await Promise.all([
-    User.countDocuments({ ...blockQuery, role: 'student' }),
+    Student.countDocuments(blockQuery),
     Complaint.countDocuments({ ...blockQuery, status: { $in: [COMPLAINT_STATUS.OPEN, COMPLAINT_STATUS.ASSIGNED, COMPLAINT_STATUS.IN_PROGRESS] } }),
     Gatepass.countDocuments({ ...blockQuery, status: GATEPASS_STATUS.PENDING }),
     Gatepass.countDocuments({ ...blockQuery, status: GATEPASS_STATUS.ACTIVE }),
@@ -98,9 +99,9 @@ router.get('/staff/workload', authenticate, isFloorAdmin, asyncHandler(async (re
   const workload = await Complaint.aggregate([
     { $match: { assigned_to: { $ne: null }, status: { $ne: COMPLAINT_STATUS.RESOLVED } } },
     { $group: { _id: '$assigned_to', count: { $sum: 1 } } },
-    { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'staff' } },
+    { $lookup: { from: 'staff', localField: '_id', foreignField: '_id', as: 'staff' } },
     { $unwind: '$staff' },
-    { $project: { _id: 1, count: 1, 'staff.name': 1, 'staff.role': 1 } },
+    { $project: { _id: 1, count: 1, 'staff.name': 1, 'staff.role': 1, 'staff.staff_role': 1 } },
     { $sort: { count: -1 } },
   ]);
   res.json({ success: true, workload });
@@ -111,7 +112,7 @@ router.get('/health-score', authenticate, isFloorAdmin, asyncHandler(async (req,
   const block = req.user.role === 'hostel_admin' ? req.query.block : req.user.block_name;
   const blockQuery = block ? { block_name: block } : {};
   const today = format(new Date(), 'yyyy-MM-dd');
-  const totalStudents = await User.countDocuments({ ...blockQuery, role: 'student' });
+  const totalStudents = await Student.countDocuments(blockQuery);
   const present = await Attendance.countDocuments({ ...blockQuery, date: today, status: ATTENDANCE_STATUS.PRESENT });
 
   const components = {

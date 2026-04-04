@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { HEALTH_SEVERITY } = require('../../../shared/constants');
 
 const healthEventSchema = new mongoose.Schema({
-  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   student_name: { type: String },
   register_number: { type: String },
   block_name: { type: String },
@@ -26,7 +26,7 @@ const healthEventSchema = new mongoose.Schema({
   resolved: { type: Boolean, default: false },
   resolved_at: { type: Date },
   resolution_note: { type: String },
-  resolved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  resolved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
 
   // Alerts sent to
   alerts_sent_to: [{

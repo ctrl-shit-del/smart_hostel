@@ -128,8 +128,8 @@ router.post('/wifi/sync', authenticate, isFloorAdmin, asyncHandler(async (req, r
   const { detected_devices, date } = req.body; // array of MAC addresses detected
   const dateStr = date || format(new Date(), 'yyyy-MM-dd');
 
-  const User = require('../models/User');
-  const students = await User.find({ device_mac: { $in: detected_devices }, role: 'student' });
+  const Student = require('../models/Student');
+  const students = await Student.find({ device_mac: { $in: detected_devices } });
 
   const operations = students.map((student) => ({
     updateOne: {

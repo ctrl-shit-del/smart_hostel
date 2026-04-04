@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Room = require('../models/Room');
-const User = require('../models/User');
+const Student = require('../models/Student');
 const { authenticate } = require('../middleware/auth');
 const { isAdmin, isWarden, authorize } = require('../middleware/rbac');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -73,7 +73,7 @@ router.post('/assign', authenticate, isWarden, asyncHandler(async (req, res) => 
   const room = await Room.findById(room_id);
   if (!room) return res.status(404).json({ success: false, message: 'Room not found' });
 
-  const student = await User.findById(student_id);
+  const student = await Student.findById(student_id);
   if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
   const bed = room.beds.find((b) => b.bed_id === bed_id);
@@ -89,9 +89,10 @@ router.post('/assign', authenticate, isWarden, asyncHandler(async (req, res) => 
 
   // Update student record
   student.block_name = room.block_name;
-  student.floor_no = room.floor_no;
+  student.floor = `Floor ${room.floor_no}`; // Matches student record format
   student.room_no = room.room_number;
-  student.bed_id = bed_id;
+  student.bed = `Bed ${bed_id}`; 
+  
   await student.save({ validateBeforeSave: false });
   await room.save();
 

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { GUEST_STATUS } = require('../../../shared/constants');
 
 const guestSchema = new mongoose.Schema({
-  host_student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  host_student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   host_register_number: { type: String },
   host_block: { type: String },
   host_room: { type: Number },
@@ -18,14 +18,14 @@ const guestSchema = new mongoose.Schema({
   authorized_areas: [{ type: String }],
 
   status: { type: String, enum: Object.values(GUEST_STATUS), default: GUEST_STATUS.PENDING },
-  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   approved_at: { type: Date },
   rejection_reason: { type: String },
 
   qr_token: { type: String, unique: true, sparse: true },
   entry_time: { type: Date },
   exit_time: { type: Date },
-  entry_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  entry_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
 
   is_overstayed: { type: Boolean, default: false },
   overstay_alert_sent: { type: Boolean, default: false },

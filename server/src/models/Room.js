@@ -3,7 +3,7 @@ const { ROOM_TYPES, ROOM_OCCUPANCY_STATUS } = require('../../../shared/constants
 
 const bedSchema = new mongoose.Schema({
   bed_id: { type: String, required: true, enum: ['A', 'B', 'C', 'D', 'E', 'F'] },
-  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
   student_name: { type: String },
   register_number: { type: String },
   is_occupied: { type: Boolean, default: false },
@@ -11,9 +11,9 @@ const bedSchema = new mongoose.Schema({
 }, { _id: false });
 
 const swapHistorySchema = new mongoose.Schema({
-  from_student: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  to_student: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  from_student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
+  to_student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
+  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   reason: { type: String },
   changed_at: { type: Date, default: Date.now },
 }, { _id: false });

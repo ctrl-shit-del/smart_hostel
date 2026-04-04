@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const CommunityPost = require('../models/CommunityPost');
-const User = require('../models/User');
+const Student = require('../models/Student');
+const Staff = require('../models/Staff');
 const { authenticate } = require('../middleware/auth');
 const { isFloorAdmin } = require('../middleware/rbac');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -94,12 +95,15 @@ function getPseudonym(userId) {
 
 // ─── DB-backed strike helpers ─────────────────────────────────────────────────
 async function getUserModState(userId) {
-  const user = await User.findById(userId).select('community_strikes community_banned');
+  let user = await Student.findById(userId).select('community_strikes community_banned');
+  if (!user) user = await Staff.findById(userId).select('community_strikes community_banned');
   return { strikes: user?.community_strikes || 0, banned: user?.community_banned || false };
 }
 
 async function addStrikeToUser(userId) {
-  const user = await User.findById(userId).select('community_strikes community_banned');
+  let user = await Student.findById(userId).select('community_strikes community_banned');
+  if (!user) user = await Staff.findById(userId).select('community_strikes community_banned');
+  
   if (!user) return { strikes: 0, banned: false };
 
   user.community_strikes = Math.min((user.community_strikes || 0) + 1, 3);
@@ -181,10 +185,21 @@ router.get('/trending', authenticate, asyncHandler(async (req, res) => {
 router.get('/admin/flagged', authenticate, isFloorAdmin, asyncHandler(async (req, res) => {
   const posts = await CommunityPost.find({ flagged: true, status: 'active' })
     .sort({ toxicity_score: -1, created_at: -1 })
-    .limit(50)
-    .populate('author_id', 'name register_number block_name floor_no room_no community_strikes community_banned');
+    .limit(50);
 
-  res.json({ success: true, posts });
+  const populated = await Promise.all(posts.map(async p => {
+    let author;
+    if (p.author_type === 'Student') {
+      author = await Student.findById(p.author_id).select('name register_number block_name floor_no room_no community_strikes community_banned');
+    } else {
+      author = await Staff.findById(p.author_id).select('name username block_name community_strikes community_banned');
+    }
+    const pj = p.toJSON();
+    pj.author_id = author;
+    return pj;
+  }));
+
+  res.json({ success: true, posts: populated });
 }));
 
 // GET /api/v1/community/admin/sentiment
@@ -205,7 +220,11 @@ router.get('/admin/sentiment', authenticate, isFloorAdmin, asyncHandler(async (r
       .select('title category toxicity_score flagged created_at pseudonym avatar_color'),
     CommunityPost.countDocuments({ status: 'active' }),
     CommunityPost.countDocuments({ flagged: true, status: 'active' }),
-    User.countDocuments({ community_banned: true }),
+    (async () => {
+      const s = await Student.countDocuments({ community_banned: true });
+      const t = await Staff.countDocuments({ community_banned: true });
+      return s + t;
+    })(),
     // Posts per day last 7 days
     CommunityPost.aggregate([
       { $match: { status: 'active', created_at: { $gte: new Date(Date.now() - 7 * 86400000) } } },
@@ -235,9 +254,11 @@ router.get('/admin/sentiment', authenticate, isFloorAdmin, asyncHandler(async (r
 
 // GET /api/v1/community/admin/banned-users — list banned users
 router.get('/admin/banned-users', authenticate, isFloorAdmin, asyncHandler(async (req, res) => {
-  const users = await User.find({ community_banned: true })
-    .select('name register_number block_name floor_no room_no community_strikes community_banned createdAt');
-  res.json({ success: true, users });
+  const [students, staff] = await Promise.all([
+    Student.find({ community_banned: true }).select('name register_number block_name floor_no room_no community_strikes community_banned createdAt'),
+    Staff.find({ community_banned: true }).select('name username block_name community_strikes community_banned createdAt')
+  ]);
+  res.json({ success: true, users: [...students, ...staff] });
 }));
 
 // POST /api/v1/community/admin/:id/remove — admin remove post + strike
@@ -248,6 +269,7 @@ router.post('/admin/:id/remove', authenticate, isFloorAdmin, asyncHandler(async 
 
   post.status = 'removed';
   post.removed_by = req.user._id;
+  post.removed_by_type = req.user.role === 'student' ? 'Student' : 'Staff';
   post.removed_reason = reason || 'Removed by admin';
   await post.save();
 
@@ -262,7 +284,9 @@ router.post('/admin/:id/remove', authenticate, isFloorAdmin, asyncHandler(async 
 
 // POST /api/v1/community/admin/:userId/unban — lift a ban
 router.post('/admin/:userId/unban', authenticate, isFloorAdmin, asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.userId).select('name community_strikes community_banned');
+  let user = await Student.findById(req.params.userId).select('name community_strikes community_banned');
+  if (!user) user = await Staff.findById(req.params.userId).select('name community_strikes community_banned');
+  
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
   user.community_banned = false;
@@ -365,6 +389,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
 
   const post = await CommunityPost.create({
     author_id: req.user._id,
+    author_type: req.user.role === 'student' ? 'Student' : 'Staff',
     pseudonym: pseudonym.name,
     avatar_color: pseudonym.color,
     title: censoredTitle,
@@ -473,6 +498,7 @@ router.post('/:id/reply', authenticate, asyncHandler(async (req, res) => {
 
   post.replies.push({
     author_id: req.user._id,
+    author_type: req.user.role === 'student' ? 'Student' : 'Staff',
     pseudonym: pseudonym.name,
     avatar_color: pseudonym.color,
     content: censoredContent,

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { GATEPASS_TYPES, GATEPASS_STATUS } = require('../../../shared/constants');
 
 const gatepassSchema = new mongoose.Schema({
-  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  student_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   student_name: { type: String },
   register_number: { type: String },
   block_name: { type: String },
@@ -23,7 +23,7 @@ const gatepassSchema = new mongoose.Schema({
 
   // Status & approval
   status: { type: String, enum: Object.values(GATEPASS_STATUS), default: GATEPASS_STATUS.PENDING },
-  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
   approved_at: { type: Date },
   rejection_reason: { type: String },
 
@@ -31,8 +31,8 @@ const gatepassSchema = new mongoose.Schema({
   qr_token: { type: String, unique: true, sparse: true },
   actual_exit: { type: Date },
   actual_return: { type: Date },
-  exit_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  return_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  exit_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+  return_guard: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
 
   // Anomaly flags
   is_overdue: { type: Boolean, default: false },

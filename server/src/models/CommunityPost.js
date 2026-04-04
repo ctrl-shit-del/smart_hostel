@@ -4,27 +4,29 @@ const COMMUNITY_CATEGORIES = ['General', 'Lost & Found', 'Book Exchange', 'Event
 const POST_STATUS = ['active', 'hidden', 'removed'];
 
 const replySchema = new mongoose.Schema({
-  author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  author_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  author_type: { type: String, required: true, enum: ['Student', 'Staff'], default: 'Student' },
   pseudonym: { type: String, required: true },
   avatar_color: { type: String, required: true },
   content: { type: String, required: true, maxlength: 1000 },
-  original_content: { type: String }, // stored before censoring
+  original_content: { type: String }, 
   toxicity_score: { type: Number, default: 0, min: 0, max: 1 },
   flagged: { type: Boolean, default: false },
-  upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  upvotes: [{ type: mongoose.Schema.Types.ObjectId }],
+  downvotes: [{ type: mongoose.Schema.Types.ObjectId }],
   created_at: { type: Date, default: Date.now },
 });
 
 const communityPostSchema = new mongoose.Schema({
-  author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  author_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  author_type: { type: String, required: true, enum: ['Student', 'Staff'], default: 'Student' },
   pseudonym: { type: String, required: true },
   avatar_color: { type: String, required: true },
   
   // Content
   title: { type: String, required: true, trim: true, maxlength: 200 },
   content: { type: String, required: true, trim: true, maxlength: 3000 },
-  original_content: { type: String }, // stored before any censoring
+  original_content: { type: String }, 
   category: { type: String, enum: COMMUNITY_CATEGORIES, default: 'General' },
   tags: [{ type: String, maxlength: 30 }],
   
@@ -34,14 +36,15 @@ const communityPostSchema = new mongoose.Schema({
   flag_reason: { type: String },
   
   // Engagement
-  upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  upvotes: [{ type: mongoose.Schema.Types.ObjectId }],
+  downvotes: [{ type: mongoose.Schema.Types.ObjectId }],
   views: { type: Number, default: 0 },
   replies: [replySchema],
   
   // Status
   status: { type: String, enum: POST_STATUS, default: 'active' },
-  removed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  removed_by: { type: mongoose.Schema.Types.ObjectId },
+  removed_by_type: { type: String, enum: ['Student', 'Staff'] },
   removed_reason: { type: String },
   
   // Hostel context
