@@ -120,6 +120,23 @@ const HTTP_STATUS = {
   INTERNAL_ERROR: 500,
 };
 
+const COMMUNITY_CATEGORIES = {
+  GENERAL: 'General',
+  LOST_FOUND: 'Lost & Found',
+  BOOK_EXCHANGE: 'Book Exchange',
+  EVENTS: 'Events',
+  QUESTIONS: 'Questions',
+  MEMES: 'Memes',
+  RANT: 'Rant',
+  HOSTEL_FEEDBACK: 'Hostel Feedback',
+};
+
+const COMMUNITY_POST_STATUS = {
+  ACTIVE: 'active',
+  HIDDEN: 'hidden',
+  REMOVED: 'removed',
+};
+
 const SOCKET_EVENTS = {
   // Complaints
   COMPLAINT_NEW: 'complaint:new',
@@ -146,6 +163,9 @@ const SOCKET_EVENTS = {
   LAUNDRY_ACCEPTED: 'laundry:accepted',
   LAUNDRY_READY: 'laundry:ready',
   LAUNDRY_OUT_OF_SCHEDULE: 'laundry:out_of_schedule',
+  // Community
+  COMMUNITY_NEW_POST: 'community:new_post',
+  COMMUNITY_POST_FLAGGED: 'community:post_flagged',
 };
 
 const LAUNDRY_STATUS = {
@@ -172,4 +192,6 @@ module.exports = {
   HTTP_STATUS,
   SOCKET_EVENTS,
   LAUNDRY_STATUS,
+  COMMUNITY_CATEGORIES,
+  COMMUNITY_POST_STATUS,
 };

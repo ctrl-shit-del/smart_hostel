@@ -1,0 +1,194 @@
+diff --git a/client/src/App.jsx b/client/src/App.jsx
+index 4d6d609..c61c0c3 100644
+--- a/client/src/App.jsx
++++ b/client/src/App.jsx
+@@ -17,6 +17,8 @@ import MyAttendance from './pages/student/Attendance';
+ import MessInfo from './pages/student/Mess';
+ import LaundrySchedule from './pages/student/Laundry';
+ import GuestRequest from './pages/student/GuestRequest';
++import CommunityForum from './pages/student/Community';
++import ChatbotWidget from './pages/student/ChatbotWidget';
+ 
+ import AdminDashboard from './pages/admin/Dashboard';
+ import RoomAllocation from './pages/admin/RoomAllocation';
+@@ -27,6 +29,7 @@ import HealthEvents from './pages/admin/HealthEvents';
+ import StaffDirectory from './pages/admin/StaffDirectory';
+ import Announcements from './pages/admin/Announcements';
+ import MessManagement from './pages/admin/MessManagement';
++import CommunitySentiment from './pages/admin/CommunitySentiment';
+ 
+ import GuardScanner from './pages/guard/GuardScanner';
+ 
+@@ -85,6 +88,7 @@ export default function App() {
+           <Route path="mess" element={<MessInfo />} />
+           <Route path="laundry" element={<LaundrySchedule />} />
+           <Route path="guest" element={<GuestRequest />} />
++          <Route path="community" element={<CommunityForum />} />
+         </Route>
+ 
+         {/* Admin/Warden/Staff Routes */}
+@@ -98,6 +102,7 @@ export default function App() {
+           <Route path="staff" element={<StaffDirectory />} />
+           <Route path="announcements" element={<Announcements />} />
+           <Route path="mess" element={<MessManagement />} />
++          <Route path="community" element={<CommunitySentiment />} />
+         </Route>
+ 
+         {/* Guard Routes */}
+@@ -107,6 +112,7 @@ export default function App() {
+ 
+         <Route path="*" element={<Navigate to="/" replace />} />
+       </Routes>
++      {isAuthenticated && <ChatbotWidget />}
+     </BrowserRouter>
+   );
+ }
+diff --git a/client/src/layout/AppShell.jsx b/client/src/layout/AppShell.jsx
+index e713ed1..4434428 100644
+--- a/client/src/layout/AppShell.jsx
++++ b/client/src/layout/AppShell.jsx
+@@ -5,7 +5,7 @@ import {
+   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
+   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
+   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
+-  UserCog, QrCode
++  UserCog, QrCode, Hash, Activity
+ } from 'lucide-react';
+ 
+ const studentNav = [
+@@ -21,6 +21,8 @@ const studentNav = [
+   { to: '/student/mess', icon: UtensilsCrossed, label: 'Mess Menu' },
+   { to: '/student/laundry', icon: WashingMachine, label: 'Laundry' },
+   { to: '/student/guest', icon: Users, label: 'Guest Request' },
++  { divider: true, label: 'Social' },
++  { to: '/student/community', icon: Hash, label: 'Community' },
+ ];
+ 
+ const adminNav = [
+@@ -35,6 +37,8 @@ const adminNav = [
+   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
+   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
+   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
++  { divider: true, label: 'Intelligence' },
++  { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
+ ];
+ 
+ const guardNav = [
+diff --git a/server/src/app.js b/server/src/app.js
+index 234c6c5..b924d7f 100644
+--- a/server/src/app.js
++++ b/server/src/app.js
+@@ -19,6 +19,8 @@ const guestRoutes = require('./routes/guests');
+ const staffRoutes = require('./routes/staff');
+ const eventRoutes = require('./routes/events');
+ const announcementRoutes = require('./routes/announcements');
++const communityRoutes = require('./routes/community');
++const chatbotRoutes = require('./routes/chatbot');
+ const { errorHandler } = require('./middleware/errorHandler');
+ 
+ const app = express();
+@@ -65,6 +67,8 @@ app.use(`${API}/guests`, guestRoutes);
+ app.use(`${API}/staff`, staffRoutes);
+ app.use(`${API}/events`, eventRoutes);
+ app.use(`${API}/announcements`, announcementRoutes);
++app.use(`${API}/community`, communityRoutes);
++app.use(`${API}/chatbot`, chatbotRoutes);
+ 
+ // ─── 404 ────────────────────────────────────────────────────────────────────
+ app.use((_req, res) => {
+diff --git a/server/src/models/User.js b/server/src/models/User.js
+index c918179..f8202fd 100644
+--- a/server/src/models/User.js
++++ b/server/src/models/User.js
+@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema({
+   assigned_hostels: [{ type: String }],
+   is_campus_wide: { type: Boolean, default: false },
+ 
++  // Community moderation
++  community_strikes: { type: Number, default: 0, min: 0, max: 3 },
++  community_banned: { type: Boolean, default: false },
++
+   // Flags
+   is_active: { type: Boolean, default: true },
+   is_flagged: { type: Boolean, default: false },
+diff --git a/shared/api-endpoints.js b/shared/api-endpoints.js
+index 6efe8da..8d7ea9a 100644
+--- a/shared/api-endpoints.js
++++ b/shared/api-endpoints.js
+@@ -164,6 +164,31 @@ const ENDPOINTS = {
+     DELETE: (id) => `${BASE}/announcements/${id}`,
+   },
+ 
++  // ─── Community (Reddit-style) ──────────────────────────────────────────────
++  COMMUNITY: {
++    LIST: `${BASE}/community`,
++    GET: (id) => `${BASE}/community/${id}`,
++    CREATE: `${BASE}/community`,
++    DELETE: (id) => `${BASE}/community/${id}`,
++    VOTE: (id) => `${BASE}/community/${id}/vote`,
++    REPLY: (id) => `${BASE}/community/${id}/reply`,
++    REPLY_VOTE: (postId, replyId) => `${BASE}/community/${postId}/reply/${replyId}/vote`,
++    MY_STRIKES: `${BASE}/community/my/strikes`,
++    TRENDING: `${BASE}/community/trending`,
++    ADMIN_FLAGGED: `${BASE}/community/admin/flagged`,
++    ADMIN_SENTIMENT: `${BASE}/community/admin/sentiment`,
++    ADMIN_REMOVE: (id) => `${BASE}/community/admin/${id}/remove`,
++    ADMIN_BANNED_USERS: `${BASE}/community/admin/banned-users`,
++    ADMIN_UNBAN: (userId) => `${BASE}/community/admin/${userId}/unban`,
++  },
++
++  // ─── Chatbot ───────────────────────────────────────────────────────────────
++  CHATBOT: {
++    MESSAGE: `${BASE}/chatbot/message`,
++    SESSION: `${BASE}/chatbot/session`,
++    NEW_SESSION: `${BASE}/chatbot/session/new`,
++  },
++
+   // ─── AI Service (Python Flask) ────────────────────────────────────────────
+   AI: {
+     CLASSIFY_COMPLAINT: `/ai/classify-complaint`,
+diff --git a/shared/constants.js b/shared/constants.js
+index 9c73463..6f9a2f7 100644
+--- a/shared/constants.js
++++ b/shared/constants.js
+@@ -120,6 +120,23 @@ const HTTP_STATUS = {
+   INTERNAL_ERROR: 500,
+ };
+ 
++const COMMUNITY_CATEGORIES = {
++  GENERAL: 'General',
++  LOST_FOUND: 'Lost & Found',
++  BOOK_EXCHANGE: 'Book Exchange',
++  EVENTS: 'Events',
++  QUESTIONS: 'Questions',
++  MEMES: 'Memes',
++  RANT: 'Rant',
++  HOSTEL_FEEDBACK: 'Hostel Feedback',
++};
++
++const COMMUNITY_POST_STATUS = {
++  ACTIVE: 'active',
++  HIDDEN: 'hidden',
++  REMOVED: 'removed',
++};
++
+ const SOCKET_EVENTS = {
+   // Complaints
+   COMPLAINT_NEW: 'complaint:new',
+@@ -142,6 +159,9 @@ const SOCKET_EVENTS = {
+   GUEST_OVERSTAY: 'guest:overstay',
+   // Security
+   INTRUDER_ALERT: 'security:intruder',
++  // Community
++  COMMUNITY_NEW_POST: 'community:new_post',
++  COMMUNITY_POST_FLAGGED: 'community:post_flagged',
+ };
+ 
+ module.exports = {
+@@ -161,4 +181,6 @@ module.exports = {
+   BLOCKS,
+   HTTP_STATUS,
+   SOCKET_EVENTS,
++  COMMUNITY_CATEGORIES,
++  COMMUNITY_POST_STATUS,
+ };

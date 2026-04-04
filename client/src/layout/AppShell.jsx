@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, MessageSquare, DoorOpen, ClipboardCheck,
   UtensilsCrossed, WashingMachine, Users, Bell, LogOut, Menu, X,
   Building2, Shield, ChevronRight, Zap, Heart, Megaphone, Calendar,
-  UserCog, QrCode
+  UserCog, QrCode, Hash, Activity
 } from 'lucide-react';
 import ChatBot from '../components/ChatBot/ChatBot.jsx';
 
@@ -23,6 +23,8 @@ const studentNav = [
   { to: '/student/mess', icon: UtensilsCrossed, label: 'Mess Menu' },
   { to: '/student/laundry', icon: WashingMachine, label: 'Laundry' },
   { to: '/student/guest', icon: Users, label: 'Guest Request' },
+  { divider: true, label: 'Social' },
+  { to: '/student/community', icon: Hash, label: 'Community' },
 ];
 
 const adminNav = [
@@ -37,6 +39,8 @@ const adminNav = [
   { to: '/admin/mess', icon: UtensilsCrossed, label: 'Mess Management' },
   { to: '/admin/staff', icon: UserCog, label: 'Staff Directory' },
   { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+  { divider: true, label: 'Intelligence' },
+  { to: '/admin/community', icon: Activity, label: 'Community Sentiment' },
 ];
 
 const guardNav = [

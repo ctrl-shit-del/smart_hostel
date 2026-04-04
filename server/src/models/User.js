@@ -46,6 +46,10 @@ const userSchema = new mongoose.Schema({
   assigned_hostels: [{ type: String }],
   is_campus_wide: { type: Boolean, default: false },
 
+  // Community moderation
+  community_strikes: { type: Number, default: 0, min: 0, max: 3 },
+  community_banned: { type: Boolean, default: false },
+
   // Flags
   is_active: { type: Boolean, default: true },
   is_flagged: { type: Boolean, default: false },

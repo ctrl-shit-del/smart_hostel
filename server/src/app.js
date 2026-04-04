@@ -19,6 +19,7 @@ const guestRoutes = require('./routes/guests');
 const staffRoutes = require('./routes/staff');
 const eventRoutes = require('./routes/events');
 const announcementRoutes = require('./routes/announcements');
+const communityRoutes = require('./routes/community');
 const chatbotRoutes = require('./routes/chatbot');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -67,8 +68,8 @@ app.use(`${API}/guests`, guestRoutes);
 app.use(`${API}/staff`, staffRoutes);
 app.use(`${API}/events`, eventRoutes);
 app.use(`${API}/announcements`, announcementRoutes);
+app.use(`${API}/community`, communityRoutes);
 app.use(`${API}/chatbot`, chatbotRoutes);
-
 
 // ─── 404 ────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

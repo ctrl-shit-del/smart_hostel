@@ -17,6 +17,8 @@ import MyAttendance from './pages/student/Attendance';
 import MessInfo from './pages/student/Mess';
 import LaundrySchedule from './pages/student/Laundry';
 import GuestRequest from './pages/student/GuestRequest';
+import CommunityForum from './pages/student/Community';
+import ChatbotWidget from './pages/student/ChatbotWidget';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import RoomAllocation from './pages/admin/RoomAllocation';
@@ -27,6 +29,7 @@ import HealthEvents from './pages/admin/HealthEvents';
 import StaffDirectory from './pages/admin/StaffDirectory';
 import Announcements from './pages/admin/Announcements';
 import MessManagement from './pages/admin/MessManagement';
+import CommunitySentiment from './pages/admin/CommunitySentiment';
 
 import GuardScanner from './pages/guard/GuardScanner';
 import DhobiScanner from './pages/dhobi/DhobiScanner';
@@ -87,6 +90,7 @@ export default function App() {
           <Route path="mess" element={<MessInfo />} />
           <Route path="laundry" element={<LaundrySchedule />} />
           <Route path="guest" element={<GuestRequest />} />
+          <Route path="community" element={<CommunityForum />} />
         </Route>
 
         {/* Admin/Warden/Staff Routes */}
@@ -100,6 +104,7 @@ export default function App() {
           <Route path="staff" element={<StaffDirectory />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="mess" element={<MessManagement />} />
+          <Route path="community" element={<CommunitySentiment />} />
         </Route>
 
         {/* Guard Routes */}
@@ -114,6 +119,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {isAuthenticated && <ChatbotWidget />}
     </BrowserRouter>
   );
 }

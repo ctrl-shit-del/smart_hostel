@@ -164,6 +164,31 @@ const ENDPOINTS = {
     DELETE: (id) => `${BASE}/announcements/${id}`,
   },
 
+  // ─── Community (Reddit-style) ──────────────────────────────────────────────
+  COMMUNITY: {
+    LIST: `${BASE}/community`,
+    GET: (id) => `${BASE}/community/${id}`,
+    CREATE: `${BASE}/community`,
+    DELETE: (id) => `${BASE}/community/${id}`,
+    VOTE: (id) => `${BASE}/community/${id}/vote`,
+    REPLY: (id) => `${BASE}/community/${id}/reply`,
+    REPLY_VOTE: (postId, replyId) => `${BASE}/community/${postId}/reply/${replyId}/vote`,
+    MY_STRIKES: `${BASE}/community/my/strikes`,
+    TRENDING: `${BASE}/community/trending`,
+    ADMIN_FLAGGED: `${BASE}/community/admin/flagged`,
+    ADMIN_SENTIMENT: `${BASE}/community/admin/sentiment`,
+    ADMIN_REMOVE: (id) => `${BASE}/community/admin/${id}/remove`,
+    ADMIN_BANNED_USERS: `${BASE}/community/admin/banned-users`,
+    ADMIN_UNBAN: (userId) => `${BASE}/community/admin/${userId}/unban`,
+  },
+
+  // ─── Chatbot ───────────────────────────────────────────────────────────────
+  CHATBOT: {
+    MESSAGE: `${BASE}/chatbot/message`,
+    SESSION: `${BASE}/chatbot/session`,
+    NEW_SESSION: `${BASE}/chatbot/session/new`,
+  },
+
   // ─── AI Service (Python Flask) ────────────────────────────────────────────
   AI: {
     CLASSIFY_COMPLAINT: `/ai/classify-complaint`,
