@@ -21,6 +21,7 @@ const COMPLAINT_CATEGORIES = {
   HOUSEKEEPING: 'Housekeeping',
   PEST_CONTROL: 'Pest Control',
   INTERNET: 'Internet',
+  RAGGING_HARASSMENT: 'Ragging / Harassment',
   OTHER: 'Other',
 };
 

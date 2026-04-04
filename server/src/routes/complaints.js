@@ -16,9 +16,17 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   const query = {};
 
   // Role-based filtering
-  if (req.user.role === 'student') query.raised_by = req.user._id;
-  else if (req.user.role === 'floor_admin') { query.block_name = req.user.block_name; query.floor_no = req.user.floor_no; }
-  else if (req.user.role === 'warden') query.block_name = req.user.block_name;
+  if (req.user.role === 'student') {
+    query.raised_by = req.user._id;
+  } else if (req.user.role === 'floor_admin') {
+    query.block_name = req.user.block_name; 
+    query.floor_no = req.user.floor_no;
+  } else if (['warden', 'hostel_admin', 'proctor'].includes(req.user.role)) {
+    const blocks = req.user.assigned_hostels_list;
+    if (blocks && blocks.length > 0) {
+      query.block_name = { $in: blocks };
+    }
+  }
 
   if (status) query.status = status;
   if (category) query.category = category;
@@ -30,7 +38,20 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
     Complaint.countDocuments(query),
   ]);
 
-  res.json({ success: true, total, page: parseInt(page), complaints });
+  // Sanitize anonymous complaints for strict roles (only wardens/proctors/hostel_admins can see identities)
+  const isAuthorizedViewer = ['warden', 'proctor', 'hostel_admin'].includes(req.user.role);
+  const sanitizedComplaints = complaints.map(c => {
+    if (c.is_anonymous && !isAuthorizedViewer && req.user._id.toString() !== c.raised_by?._id.toString()) {
+      const sanitized = c.toObject();
+      sanitized.raised_by = null;
+      sanitized.student_name = 'Anonymous Student';
+      sanitized.register_number = 'HIDDEN';
+      return sanitized;
+    }
+    return c;
+  });
+
+  res.json({ success: true, total, page: parseInt(page), complaints: sanitizedComplaints });
 }));
 
 // GET /api/v1/complaints/analytics/heatmap
@@ -46,18 +67,27 @@ router.get('/analytics/heatmap', authenticate, isFloorAdmin, asyncHandler(async 
 }));
 
 // GET /api/v1/complaints/analytics/stats
-router.get('/analytics/stats', authenticate, isFloorAdmin, asyncHandler(async (req, res) => {
-  const block = req.user.block_name;
+router.get('/analytics/stats', authenticate, asyncHandler(async (req, res) => {
+  const matchObj = {};
+  if (req.user.role === 'floor_admin') {
+    matchObj.block_name = req.user.block_name;
+  } else if (['warden', 'hostel_admin', 'proctor'].includes(req.user.role)) {
+    const blocks = req.user.assigned_hostels_list;
+    if (blocks && blocks.length > 0) {
+      matchObj.block_name = { $in: blocks };
+    }
+  }
+
   const [statusBreakdown, avgResolution, slaBreaches] = await Promise.all([
     Complaint.aggregate([
-      { $match: block ? { block_name: block } : {} },
+      { $match: matchObj },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]),
     Complaint.aggregate([
-      { $match: { resolved_at: { $ne: null } } },
+      { $match: { ...matchObj, resolved_at: { $ne: null } } },
       { $group: { _id: null, avg_hours: { $avg: '$resolution_time_hrs' } } },
     ]),
-    Complaint.countDocuments({ sla_breached: true }),
+    Complaint.countDocuments({ ...matchObj, sla_breached: true }),
   ]);
   res.json({ success: true, statusBreakdown, avgResolutionHrs: avgResolution[0]?.avg_hours || 0, slaBreaches });
 }));
@@ -72,7 +102,8 @@ router.post('/classify', authenticate, asyncHandler(async (req, res) => {
     // Fallback: rule-based keyword classification
     const text = description?.toLowerCase() || '';
     let category = 'Other', urgency = 0.3;
-    if (/electric|switch|fan|light|bulb|wire|plug|socket|power/.test(text)) { category = 'Electrical'; urgency = 0.7; }
+    if (/ragging|harass|bully|abuse|threat|assault/.test(text)) { category = 'Ragging / Harassment'; urgency = 0.95; }
+    else if (/electric|switch|fan|light|bulb|wire|plug|socket|power/.test(text)) { category = 'Electrical'; urgency = 0.7; }
     else if (/water|pipe|leak|drain|tap|flush|toilet|plumb/.test(text)) { category = 'Plumbing'; urgency = 0.9; }
     else if (/wall|ceiling|floor|crack|door|window|lock|paint/.test(text)) { category = 'Civil'; urgency = 0.4; }
     else if (/clean|dirt|waste|garbage|sweep|mop|dust/.test(text)) { category = 'Housekeeping'; urgency = 0.3; }
@@ -84,7 +115,7 @@ router.post('/classify', authenticate, asyncHandler(async (req, res) => {
 
 // POST /api/v1/complaints — raise new complaint
 router.post('/', authenticate, asyncHandler(async (req, res) => {
-  const { title, description, category, severity, photos } = req.body;
+  const { title, description, category, severity, photos, is_anonymous } = req.body;
 
   // Auto-classify with AI
   let ai_category = category, ai_confidence = null, ai_urgency_score = null;
@@ -105,8 +136,9 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     title,
     description,
     category: ai_category || category,
-    severity,
+    severity: category === 'Ragging / Harassment' ? 'Urgent' : severity,
     photos: photos || [],
+    is_anonymous: !!is_anonymous,
     ai_category,
     ai_confidence,
     ai_urgency_score,
@@ -137,6 +169,16 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
 router.get('/:id', authenticate, asyncHandler(async (req, res) => {
   const complaint = await Complaint.findById(req.params.id).populate('raised_by', 'name register_number').populate('assigned_to', 'name role');
   if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
+  
+  const isAuthorizedViewer = ['warden', 'proctor', 'hostel_admin'].includes(req.user.role);
+  if (complaint.is_anonymous && !isAuthorizedViewer && req.user._id.toString() !== complaint.raised_by?._id.toString()) {
+    const sanitized = complaint.toObject();
+    sanitized.raised_by = null;
+    sanitized.student_name = 'Anonymous Student';
+    sanitized.register_number = 'HIDDEN';
+    return res.json({ success: true, complaint: sanitized });
+  }
+
   res.json({ success: true, complaint });
 }));
 

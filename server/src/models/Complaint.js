@@ -15,6 +15,7 @@ const complaintSchema = new mongoose.Schema({
   category: { type: String, enum: Object.values(COMPLAINT_CATEGORIES), required: true },
   severity: { type: String, enum: Object.values(COMPLAINT_SEVERITY), default: COMPLAINT_SEVERITY.NORMAL },
   photos: [{ type: String }], // URLs
+  is_anonymous: { type: Boolean, default: false },
 
   // AI classification
   ai_category: { type: String },

@@ -366,6 +366,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
 
   const censoredTitle = censorText(title);
   const censoredContent = censorText(content);
+  const wasCensored = title !== censoredTitle || content !== censoredContent;
 
   if (totalScore > 0.7) {
     const { strikes: newStrikes, banned: nowBanned } = await addStrikeToUser(req.user._id);
@@ -378,7 +379,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     });
   }
 
-  const flagged = totalScore > 0.3;
+  let flagged = totalScore > 0.3 || wasCensored;
   let currentStrikes = strikes;
   if (flagged && totalScore > 0.5) {
     const result = await addStrikeToUser(req.user._id);
@@ -399,7 +400,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     tags: tags || [],
     toxicity_score: totalScore,
     flagged,
-    flag_reason: flagged ? `Detected: ${allReasons.join(', ')}` : undefined,
+    flag_reason: flagged ? `Detected: ${allReasons.join(', ')} ${wasCensored ? '[Profanity Auto-Censored]' : ''}`.trim() : undefined,
     block_name: req.user.block_name,
   });
 
@@ -490,11 +491,13 @@ router.post('/:id/reply', authenticate, asyncHandler(async (req, res) => {
     });
   }
 
-  const flagged = score > 0.3;
+  const censoredContent = censorText(content);
+  const wasCensored = content !== censoredContent;
+
+  const flagged = score > 0.3 || wasCensored;
   if (flagged && score > 0.5) await addStrikeToUser(req.user._id);
 
   const pseudonym = getPseudonym(req.user._id);
-  const censoredContent = censorText(content);
 
   post.replies.push({
     author_id: req.user._id,

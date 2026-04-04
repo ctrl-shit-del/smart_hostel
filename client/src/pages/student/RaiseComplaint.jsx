@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
-const CATEGORIES = ['Electrical', 'Plumbing', 'Civil', 'Housekeeping', 'Pest Control', 'Internet', 'Other'];
+const CATEGORIES = ['Electrical', 'Plumbing', 'Civil', 'Housekeeping', 'Pest Control', 'Internet', 'Ragging / Harassment', 'Other'];
 const SEVERITY_OPTIONS = [
   { value: 'Normal', label: 'Normal', color: '#f59e0b' },
   { value: 'Urgent', label: 'Urgent', color: '#ef4444' },
@@ -12,12 +12,12 @@ const SEVERITY_OPTIONS = [
 
 const CATEGORY_ICONS = {
   'Electrical': '⚡', 'Plumbing': '🔧', 'Civil': '🏗️', 'Housekeeping': '🧹',
-  'Pest Control': '🐛', 'Internet': '📶', 'Other': '📋',
+  'Pest Control': '🐛', 'Internet': '📶', 'Ragging / Harassment': '⚠️', 'Other': '📋',
 };
 
 export default function RaiseComplaint() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ title: '', description: '', category: '', severity: 'Normal' });
+  const [form, setForm] = useState({ title: '', description: '', category: '', severity: 'Normal', is_anonymous: false });
   const [aiResult, setAiResult] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -35,9 +35,12 @@ export default function RaiseComplaint() {
         try {
           const res = await api.post('/complaints/classify', { description: val });
           setAiResult(res);
-          // Auto-set category if confidence > 0.6
           if (res.category && res.confidence > 0.6 && !form.category) {
-            setForm(prev => ({ ...prev, category: res.category }));
+            setForm(prev => ({ 
+              ...prev, 
+              category: res.category,
+              severity: res.category === 'Ragging / Harassment' ? 'Urgent' : prev.severity
+            }));
           }
         } catch { /* silent */ }
         finally { setAiLoading(false); }
@@ -135,11 +138,12 @@ export default function RaiseComplaint() {
             <label className="form-label">Category * {aiResult && form.category === aiResult.category && <span style={{ fontSize: '0.7rem', color: '#6366f1' }}>(AI suggested)</span>}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {CATEGORIES.map(cat => (
-                <button key={cat} type="button" onClick={() => setForm({ ...form, category: cat })}
+                <button key={cat} type="button" 
+                  onClick={() => setForm({ ...form, category: cat, severity: cat === 'Ragging / Harassment' ? 'Urgent' : form.severity, is_anonymous: cat === 'Ragging / Harassment' ? true : form.is_anonymous })}
                   style={{
-                    padding: '8px 14px', borderRadius: 8, border: `1px solid ${form.category === cat ? '#6366f1' : 'var(--border)'}`,
-                    background: form.category === cat ? 'rgba(99,102,241,0.15)' : 'var(--bg-elevated)',
-                    color: form.category === cat ? '#6366f1' : 'var(--text-secondary)',
+                    padding: '8px 14px', borderRadius: 8, border: `1px solid ${form.category === cat ? (cat === 'Ragging / Harassment' ? '#ef4444' : '#6366f1') : 'var(--border)'}`,
+                    background: form.category === cat ? (cat === 'Ragging / Harassment' ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.15)') : 'var(--bg-elevated)',
+                    color: form.category === cat ? (cat === 'Ragging / Harassment' ? '#ef4444' : '#6366f1') : 'var(--text-secondary)',
                     fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.15s',
                   }}>
                   {CATEGORY_ICONS[cat]} {cat}
@@ -148,22 +152,41 @@ export default function RaiseComplaint() {
             </div>
           </div>
 
+          {/* Anonymous Toggle (Specifically highlighted for Ragging) */}
+          <div className="form-group" style={{ background: form.is_anonymous ? 'rgba(16,185,129,0.05)' : 'transparent', padding: form.is_anonymous ? 12 : 0, borderRadius: 8, transition: 'all 0.2s', border: form.is_anonymous ? '1px solid rgba(16,185,129,0.2)' : 'none' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.is_anonymous} onChange={(e) => setForm({ ...form, is_anonymous: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#10b981' }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: form.is_anonymous ? '#10b981' : 'var(--text)' }}>
+                  Report Anonymously
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Only authorized personnel (Chief Warden/Security) will be able to see your identity.
+                </span>
+              </div>
+            </label>
+          </div>
+
+
           {/* Severity */}
           <div className="form-group">
             <label className="form-label">Severity</label>
             <div style={{ display: 'flex', gap: 10 }}>
               {SEVERITY_OPTIONS.map(s => (
-                <button key={s.value} type="button" onClick={() => setForm({ ...form, severity: s.value })}
+                <button key={s.value} type="button" 
+                  disabled={form.category === 'Ragging / Harassment'}
+                  onClick={() => setForm({ ...form, severity: s.value })}
                   style={{
                     flex: 1, padding: '10px', borderRadius: 8, border: `1px solid ${form.severity === s.value ? s.color : 'var(--border)'}`,
                     background: form.severity === s.value ? `${s.color}15` : 'var(--bg-elevated)',
                     color: form.severity === s.value ? s.color : 'var(--text-muted)',
-                    fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', textAlign: 'center',
+                    fontWeight: 700, fontSize: '0.85rem', cursor: form.category === 'Ragging / Harassment' ? 'not-allowed' : 'pointer', textAlign: 'center', opacity: form.category === 'Ragging / Harassment' && s.value !== 'Urgent' ? 0.3 : 1
                   }}>
                   {s.label}
                 </button>
               ))}
             </div>
+            {form.category === 'Ragging / Harassment' && <span style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: 4 }}>Locked to Urgent for Harassment issues.</span>}
           </div>
 
           <button className="btn btn-primary btn-lg" type="submit" disabled={submitting} style={{ marginTop: 8 }}>

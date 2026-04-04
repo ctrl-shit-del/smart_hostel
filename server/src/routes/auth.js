@@ -6,6 +6,9 @@ const { generateToken } = require('../utils/jwt');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { authenticate } = require('../middleware/auth');
 
+// Helper: escape user input before constructing a RegExp
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const ROLE_CATEGORIES = {
   student: ['student'],
   warden: ['hostel_admin', 'warden', 'floor_admin', 'mess_incharge', 'faculty'],
@@ -26,6 +29,9 @@ router.post('/login', asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Please provide your ID or email.' });
   }
 
+  // Build a safe case-insensitive regex from the identifier
+  const safeIdentifierRegex = new RegExp(`^${escapeRegex(identifier)}$`, 'i');
+
   let user = null;
   let isStaff = false;
 
@@ -42,8 +48,8 @@ router.post('/login', asyncHandler(async (req, res) => {
   } else if (loginCategory === 'warden') {
     user = await Staff.findOne({
       $or: [
-        { username: new RegExp(`^${identifier}$`, 'i') },
-        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+        { username: safeIdentifierRegex },
+        { 'contactInfo.email': safeIdentifierRegex }
       ]
     });
     if (user) {
@@ -60,11 +66,10 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
   } else if (loginCategory === 'proctor') {
-    const Staff = require('../models/Staff');
     user = await Staff.findOne({
       $or: [
-        { username: new RegExp(`^${identifier}$`, 'i') },
-        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+        { username: safeIdentifierRegex },
+        { 'contactInfo.email': safeIdentifierRegex }
       ]
     });
     if (user) {
@@ -86,8 +91,8 @@ router.post('/login', asyncHandler(async (req, res) => {
   } else if (loginCategory === 'service') {
     user = await Staff.findOne({
       $or: [
-        { username: new RegExp(`^${identifier}$`, 'i') },
-        { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+        { username: safeIdentifierRegex },
+        { 'contactInfo.email': safeIdentifierRegex }
       ]
     });
     if (user) {
@@ -97,18 +102,17 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
   } else {
-    const studentQuery = {
+    user = await Student.findOne({
       $or: [
         { register_number: identifier.toUpperCase() },
         { email: identifier.toLowerCase() }
       ]
-    };
-    user = await Student.findOne(studentQuery);
+    });
     if (!user) {
       user = await Staff.findOne({
         $or: [
-          { username: new RegExp(`^${identifier}$`, 'i') },
-          { 'contactInfo.email': new RegExp(`^${identifier}$`, 'i') }
+          { username: safeIdentifierRegex },
+          { 'contactInfo.email': safeIdentifierRegex }
         ]
       });
       isStaff = !!user;
@@ -132,13 +136,16 @@ router.post('/login', asyncHandler(async (req, res) => {
   }
 
   if (!isStaff) {
-    user.last_login = new Date();
-    await user.save({ validateBeforeSave: false });
+    try {
+      user.last_login = new Date();
+      await user.save({ validateBeforeSave: false });
+    } catch (saveError) {
+      console.warn('Failed to update last_login:', saveError.message);
+    }
   }
 
   const resolvedRole = isStaff ? user.effectiveRole : (user.role || 'student');
-  const tokenPayload = { _id: user._id, role: resolvedRole };
-  const token = generateToken(tokenPayload);
+  const token = generateToken(user, resolvedRole);
 
   const userObj = user.toJSON({ virtuals: true });
   delete userObj.password;
@@ -196,7 +203,7 @@ router.post('/register', asyncHandler(async (req, res) => {
     });
   }
 
-  const token = generateToken(user);
+  const token = generateToken(user, user.role);
   res.status(201).json({
     success: true,
     message: 'Registration successful',
